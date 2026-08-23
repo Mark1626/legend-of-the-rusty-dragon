@@ -72,7 +72,7 @@ body {
 .topbar h1 { font-size: 1.15rem; font-weight: 600; margin: 0; letter-spacing: 0.01em; }
 .dragon { color: var(--gold); }
 .realm, .whoami { font-size: 0.82rem; color: var(--ink-dim); }
-.whoami { margin-left: auto; }
+.topmenu { margin-left: auto; display: flex; align-items: baseline; gap: 0.25rem; }
 .whoami strong { color: var(--ink); }
 .sep { opacity: 0.4; padding: 0 0.15rem; }
 
@@ -107,7 +107,10 @@ button { cursor: pointer; }
 button:hover:not(:disabled) { border-color: var(--gold); }
 button:disabled { opacity: 0.4; cursor: not-allowed; }
 
-#join-submit { width: 100%; margin-top: 0.5rem; padding: 0.6rem; color: var(--gold); }
+#join-submit, #return-submit { width: 100%; margin-top: 0.5rem; padding: 0.6rem; color: var(--gold); }
+
+.gate-return { margin-top: 2.5rem; padding-top: 1.75rem; border-top: 1px solid var(--edge); }
+.gate-return h2 { font-size: 0.95rem; font-weight: 600; margin: 0 0 1rem; }
 
 .error {
   color: var(--span-red);
@@ -277,6 +280,35 @@ main {
 .who.self { color: var(--gold); font-weight: 600; }
 .lvl { color: var(--ink-dim); font-variant-numeric: tabular-nums; font-size: 0.8rem; }
 .zzz { opacity: 0.5; }
+
+/* --------------------------------------------------------------- dialogs */
+
+dialog {
+  background: var(--raised);
+  color: var(--ink);
+  border: 1px solid var(--edge);
+  border-radius: 8px;
+  padding: 1.25rem 1.5rem;
+  width: min(34rem, 92vw);
+  box-shadow: 0 12px 40px rgb(0 0 0 / 0.4);
+}
+dialog::backdrop { background: rgb(0 0 0 / 0.55); }
+dialog h2 { font-size: 1rem; font-weight: 600; margin: 1.4rem 0 0.6rem; }
+dialog h2:first-child { margin-top: 0; }
+dialog p { color: var(--ink-dim); font-size: 0.9rem; margin: 0 0 0.9rem; }
+dialog label { display: block; font-size: 0.85rem; color: var(--ink-dim); }
+
+.dialog-actions { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 1.1rem; }
+
+#welcome-token { font-family: var(--mono); font-size: 0.78rem; }
+
+.help .help-body { max-height: min(65vh, 34rem); overflow-y: auto; scrollbar-width: thin; padding-right: 0.5rem; }
+.help-steps { color: var(--ink-dim); font-size: 0.9rem; margin: 0; padding-left: 1.3rem; }
+.help-steps li { margin-bottom: 0.45rem; }
+
+.glossary { margin: 0; font-size: 0.9rem; }
+.glossary dt { color: var(--gold); font-weight: 600; margin-top: 0.85rem; }
+.glossary dd { margin: 0.15rem 0 0; color: var(--ink-dim); }
 
 /* ---------------------------------------------------------------- toast */
 

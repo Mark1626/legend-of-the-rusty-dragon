@@ -19,6 +19,10 @@ const NICK_KEY = 'rusty-dragon.nick';
 const FEED_INTERVAL_MS = 4_000;
 const STATE_INTERVAL_MS = 20_000;
 
+// How much history to paint when a session opens. The server keeps about a
+// week; this is roughly a screenful of scrollback.
+const BACKLOG_LINES = 200;
+
 const $ = (id) => document.getElementById(id);
 
 const store = {
@@ -49,13 +53,15 @@ const state = {
 
 // ---------------------------------------------------------------- requests
 
-async function api(path, { method = 'GET', body, auth = false } = {}) {
+async function api(path, { method = 'GET', body, auth = false, token } = {}) {
   const headers = {};
   if (body !== undefined) headers['content-type'] = 'application/json';
   if (auth) {
-    const token = store.token;
-    if (!token) throw new ApiError(401, 'You are not signed in.');
-    headers.authorization = `Bearer ${token}`;
+    // An explicit token wins: the returning-player form has to prove a token
+    // before anything is saved.
+    const bearer = token ?? store.token;
+    if (!bearer) throw new ApiError(401, 'You are not signed in.');
+    headers.authorization = `Bearer ${bearer}`;
   }
 
   let response;
@@ -421,9 +427,6 @@ async function refreshState() {
     renderBoard(snapshot.quests);
     renderStore(snapshot.shop);
     renderScores(snapshot.scores);
-
-    // A brand-new session starts at the tip rather than replaying a week.
-    if (state.cursor === 0) state.cursor = snapshot.cursor;
   } catch (error) {
     if (error.status === 0) $('feed-status').textContent = 'offline';
   }
@@ -442,7 +445,13 @@ async function refreshMe() {
 
 async function pollFeed() {
   try {
-    const page = await api(`/api/feed?since=${state.cursor}&limit=200`);
+    // The first read pulls the recent backlog off the server, where history
+    // survives reloads, sign-outs and new devices; after that the cursor
+    // pages strictly forward.
+    const query = state.cursor === 0
+      ? `/api/feed?last=${BACKLOG_LINES}`
+      : `/api/feed?since=${state.cursor}&limit=200`;
+    const page = await api(query);
     if (page.lines.length) {
       appendFeed(page.lines);
       state.cursor = page.cursor;
@@ -471,6 +480,50 @@ async function join(event) {
   try {
     const result = await api('/api/join', { method: 'POST', body: { nick, invite } });
     store.save(result.nick, result.token);
+    // Show the token before anything else can happen to the page. If this
+    // browser cannot keep it (a private window, blocked site data), the game
+    // below would sign straight back out and reload; waiting here guarantees
+    // the player saw their one credential first.
+    await showFreshToken(result.nick, result.token);
+    await enterRealm();
+  } catch (failure) {
+    error.textContent = failure.message;
+    error.hidden = false;
+  } finally {
+    button.disabled = false;
+  }
+}
+
+/** Present a just-minted token, resolving once the player dismisses it. */
+function showFreshToken(nick, token) {
+  return new Promise((resolve) => {
+    $('welcome-nick').textContent = nick;
+    $('welcome-token').value = token;
+    const dialog = $('welcome-dialog');
+    dialog.addEventListener('close', resolve, { once: true });
+    dialog.showModal();
+  });
+}
+
+/**
+ * Come back with a saved token.
+ *
+ * The server keeps only the token's digest, so the token itself *is* the
+ * credential: `/api/me` resolves it to a nick whether or not the character
+ * still exists — a purged or ascended player signs back in and simply starts
+ * their next character by questing.
+ */
+async function returnToRealm(event) {
+  event.preventDefault();
+  const token = $('return-token').value.trim();
+  const button = $('return-submit');
+  const error = $('return-error');
+
+  button.disabled = true;
+  error.hidden = true;
+  try {
+    const me = await api('/api/me', { auth: true, token });
+    store.save(me.nick, token);
     await enterRealm();
   } catch (failure) {
     error.textContent = failure.message;
@@ -483,6 +536,22 @@ async function join(event) {
 function signOut() {
   store.clear();
   location.reload();
+}
+
+/** A click handler that copies one input's text and confirms on its button. */
+function copyToken(inputId, buttonId) {
+  return async () => {
+    const input = $(inputId);
+    try {
+      await navigator.clipboard.writeText(input.value);
+    } catch {
+      // No clipboard permission — leave the text selected for a manual copy.
+      input.select();
+    }
+    const button = $(buttonId);
+    button.textContent = 'Copied';
+    setTimeout(() => { button.textContent = 'Copy token'; }, 2_000);
+  };
 }
 
 async function enterRealm() {
@@ -503,10 +572,27 @@ async function enterRealm() {
 // -------------------------------------------------------------------- boot
 
 $('join-form').addEventListener('submit', join);
-$('sign-out').addEventListener('click', signOut);
+$('return-form').addEventListener('submit', returnToRealm);
 $('strategy').addEventListener('change', () => {
   toast(`Strategy set to "${$('strategy').value}" for your next quest.`);
 });
+
+$('welcome-copy').addEventListener('click', copyToken('welcome-token', 'welcome-copy'));
+$('welcome-continue').addEventListener('click', () => $('welcome-dialog').close());
+// Do not leave the token sitting in the DOM once the dialog is dismissed.
+$('welcome-dialog').addEventListener('close', () => { $('welcome-token').value = ''; });
+
+$('sign-out').addEventListener('click', signOut);
+
+$('help-open').addEventListener('click', () => $('help-dialog').showModal());
+$('help-close').addEventListener('click', () => $('help-dialog').close());
+
+// A click on the backdrop lands on the <dialog> itself; treat it as a dismiss.
+for (const dialog of document.querySelectorAll('dialog')) {
+  dialog.addEventListener('click', (event) => {
+    if (event.target === dialog) dialog.close();
+  });
+}
 
 if (store.token) {
   enterRealm();

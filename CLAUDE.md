@@ -175,14 +175,14 @@ authenticating the server.
 ## Testing
 
 ```bash
-cargo test --workspace                 # 306
+cargo test --workspace                 # 308
 export TEST_DATABASE_URL="postgres://dragon:dragon@localhost:55432/dragon"
-cargo test --workspace                 # 306, and 51 of them actually run
+cargo test --workspace                 # 308, and 53 of them actually run
 ```
 
-**A green run without `TEST_DATABASE_URL` proves less than it looks.** The 51
+**A green run without `TEST_DATABASE_URL` proves less than it looks.** The 53
 database tests return early when the variable is absent and are counted as
-*passing*, so the total is 306 either way. Any change touching SQL, the turn
+*passing*, so the total is 308 either way. Any change touching SQL, the turn
 transaction, or an endpoint has to be run against a real Postgres to have been
 tested at all.
 
@@ -190,8 +190,8 @@ tested at all.
 |---|---|
 | `dragon-core` unit | 219 — the game rules |
 | `dragon-api` unit | 36 — config, auth, error mapping, line rendering |
-| `tests/store.rs` | 16 — persistence, feed paging, concurrency |
-| `tests/http.rs` | 29 — every endpoint, status codes, the invitation gate |
+| `tests/store.rs` | 17 — persistence, feed paging, concurrency |
+| `tests/http.rs` | 30 — every endpoint, status codes, the invitation gate |
 | `tests/contention.rs` | 5 — a stranded lock, the tick-boundary herd |
 | `tests/large_turns.rs` | 1 — the bind-parameter ceiling |
 

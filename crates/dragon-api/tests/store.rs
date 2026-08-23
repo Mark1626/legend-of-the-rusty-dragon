@@ -208,6 +208,35 @@ async fn the_feed_is_ordered_and_pages_by_cursor() {
 }
 
 #[tokio::test]
+async fn the_feed_tail_is_the_newest_lines_in_reading_order() {
+    let (store, _pool) = store!();
+    store.commit_turn(Input::Join { nick: "Absalom".into() }).await.unwrap();
+    for _ in 0..6 {
+        store.commit_turn(Input::Admin(AdminCommand::AddQuest { level: Some(2) })).await.unwrap();
+    }
+
+    let all = store.feed(0, 500, None).await.unwrap();
+    assert!(all.len() > 3);
+
+    // The tail is exactly the end of the full history, still oldest-first.
+    let tail = store.feed_tail(3, None).await.unwrap();
+    assert_eq!(
+        tail.iter().map(|e| e.id).collect::<Vec<_>>(),
+        all[all.len() - 3..].iter().map(|e| e.id).collect::<Vec<_>>()
+    );
+
+    // Asking for more than exists returns everything, not an error.
+    let generous = store.feed_tail(500, None).await.unwrap();
+    assert_eq!(generous.len(), all.len());
+
+    // The actor filter applies before the tail is cut, so a quiet player's
+    // few lines are found even under a flood of other news.
+    let mine = store.feed_tail(500, Some("Absalom")).await.unwrap();
+    assert!(!mine.is_empty());
+    assert!(mine.iter().all(|entry| entry.line.actors.iter().any(|a| a == "Absalom")));
+}
+
+#[tokio::test]
 async fn the_feed_can_be_narrowed_to_one_player() {
     let (store, _pool) = store!();
     store.commit_turn(Input::Join { nick: "Absalom".into() }).await.unwrap();

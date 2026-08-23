@@ -340,20 +340,48 @@ impl Store {
             }
         };
 
-        rows.into_iter()
-            .map(|row| {
-                let spans: Vec<Span> = serde_json::from_value(row.try_get("spans")?)?;
-                Ok(FeedEntry {
-                    id: row.try_get("id")?,
-                    line: Line {
-                        kind: parse_kind(&row.try_get::<String, _>("kind")?),
-                        actors: row.try_get("actors")?,
-                        spans,
-                        at: Some(row.try_get("occurred_at")?),
-                    },
-                })
-            })
-            .collect()
+        rows.into_iter().map(feed_entry).collect()
+    }
+
+    /// The newest `limit` lines, oldest first — the backlog a fresh session
+    /// paints before it starts polling forward.
+    ///
+    /// This is what makes history a server-side matter: the feed table outlives
+    /// browsers, devices and game restarts, so a client that has lost its
+    /// cursor can always reopen on the recent past instead of an empty channel.
+    pub async fn feed_tail(
+        &self,
+        limit: i64,
+        actor: Option<&str>,
+    ) -> Result<Vec<FeedEntry>> {
+        let limit = limit.clamp(1, 500);
+        let rows = match actor {
+            Some(nick) => {
+                sqlx::query(
+                    "select id, occurred_at, kind, actors, spans from
+                       (select id, occurred_at, kind, actors, spans from feed
+                        where actors @> array[$1]::text[]
+                        order by id desc limit $2) newest
+                     order by id",
+                )
+                .bind(nick)
+                .bind(limit)
+                .fetch_all(&self.pool)
+                .await?
+            }
+            None => {
+                sqlx::query(
+                    "select id, occurred_at, kind, actors, spans from
+                       (select id, occurred_at, kind, actors, spans from feed
+                        order by id desc limit $1) newest
+                     order by id",
+                )
+                .bind(limit)
+                .fetch_all(&self.pool)
+                .await?
+            }
+        };
+        rows.into_iter().map(feed_entry).collect()
     }
 
     /// The newest feed id, for a client that wants to start from "now".
@@ -403,6 +431,20 @@ impl Store {
             retry_after: row.try_get("retry_after")?,
         })
     }
+}
+
+/// Rehydrate one stored feed row.
+fn feed_entry(row: sqlx::postgres::PgRow) -> Result<FeedEntry> {
+    let spans: Vec<Span> = serde_json::from_value(row.try_get("spans")?)?;
+    Ok(FeedEntry {
+        id: row.try_get("id")?,
+        line: Line {
+            kind: parse_kind(&row.try_get::<String, _>("kind")?),
+            actors: row.try_get("actors")?,
+            spans,
+            at: Some(row.try_get("occurred_at")?),
+        },
+    })
 }
 
 /// One caller's standing in the signup rate limit.

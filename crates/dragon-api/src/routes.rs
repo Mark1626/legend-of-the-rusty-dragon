@@ -96,6 +96,10 @@ pub struct FeedQuery {
     /// Narrow to lines naming one player.
     #[serde(default)]
     pub actor: Option<String>,
+    /// Return the newest this-many lines instead — the backlog for a session
+    /// that has no cursor yet. When present, `since` and `limit` are ignored.
+    #[serde(default)]
+    pub last: Option<i64>,
 }
 
 fn default_limit() -> i64 {
@@ -399,11 +403,19 @@ async fn state(State(app): State<AppState>) -> ApiResult<Json<Value>> {
 
 /// History. Never ticks: a client polling this every few seconds must not
 /// contend for the game lock.
+///
+/// Two shapes of read: `?since=` pages forward from a cursor, and `?last=`
+/// serves the newest lines for a session that has no cursor yet — history
+/// lives here rather than in any browser, so a reload, a new device or a
+/// cleared cache all reopen on the recent past instead of an empty channel.
 async fn feed(
     State(app): State<AppState>,
     Query(query): Query<FeedQuery>,
 ) -> ApiResult<Json<Value>> {
-    let entries = app.store.feed(query.since, query.limit, query.actor.as_deref()).await?;
+    let entries = match query.last {
+        Some(last) => app.store.feed_tail(last, query.actor.as_deref()).await?,
+        None => app.store.feed(query.since, query.limit, query.actor.as_deref()).await?,
+    };
     let cursor = entries.last().map(|entry| entry.id).unwrap_or(query.since);
     Ok(Json(json!({
         "cursor": cursor,

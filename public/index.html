@@ -19,10 +19,13 @@
     <span class="sep">·</span>
     ascend at CR <span id="realm-ascension">—</span>
   </div>
-  <div class="whoami" id="whoami" hidden>
-    <strong id="whoami-nick"></strong>
-    <button id="sign-out" class="link" type="button">sign out</button>
-  </div>
+  <nav class="topmenu">
+    <div class="whoami" id="whoami" hidden>
+      <strong id="whoami-nick"></strong>
+      <button id="sign-out" class="link" type="button">sign out</button>
+    </div>
+    <button id="help-open" class="link" type="button">help</button>
+  </nav>
 </header>
 
 <!-- Joining ---------------------------------------------------------------->
@@ -47,6 +50,20 @@
     <button type="submit" id="join-submit">Enter the Realm</button>
     <p class="error" id="join-error" hidden></p>
   </form>
+
+  <div class="gate-return">
+    <h2>Returning to the Realm?</h2>
+    <form id="return-form" autocomplete="off">
+      <label>
+        Your token
+        <input id="return-token" type="password" required
+               placeholder="the token you were given when you joined" spellcheck="false">
+        <small>Issued once, when you first joined. It is the only way back in.</small>
+      </label>
+      <button type="submit" id="return-submit">Return to the Realm</button>
+      <p class="error" id="return-error" hidden></p>
+    </form>
+  </div>
 </section>
 
 <!-- Playing ---------------------------------------------------------------->
@@ -68,15 +85,15 @@
       </div>
       <dl class="sheet" id="sheet"></dl>
       <div class="rest" id="rest" hidden>
-        Resting — <span id="rest-clock">—</span>
+        Resting <span id="rest-clock">—</span>
       </div>
       <label class="strategy">
         Strategy
         <select id="strategy">
-          <option value="random">random — a target at whim</option>
-          <option value="harsh">harsh — the weakest first</option>
-          <option value="rage">rage — the easiest first</option>
-          <option value="wise">wise — the most dangerous first</option>
+          <option value="random">random a target at whim</option>
+          <option value="harsh">harsh the weakest first</option>
+          <option value="rage">rage the easiest first</option>
+          <option value="wise">wise the most dangerous first</option>
         </select>
       </label>
     </section>
@@ -101,6 +118,134 @@
 
   </div>
 </main>
+
+<!-- Joining: the one chance to save a fresh token ------------------------ -->
+<dialog id="welcome-dialog">
+  <h2>Welcome to the Realm</h2>
+  <p>
+    This token is your key back into the Realm as
+    <strong id="welcome-nick"></strong>. This browser will remember it, but if
+    it ever forgets (a cleared history, a private window, another device),
+    nobody can reissue it. Copy it somewhere safe now.
+  </p>
+  <label>
+    Your token
+    <input id="welcome-token" readonly spellcheck="false">
+  </label>
+  <div class="dialog-actions">
+    <button type="button" id="welcome-copy">Copy token</button>
+    <button type="button" id="welcome-continue">Continue</button>
+  </div>
+</dialog>
+
+<!-- Help ---------------------------------------------------------------- -->
+<dialog id="help-dialog" class="help">
+  <div class="help-body">
+    <h2>How to play</h2>
+    <p>
+      Life in the Realm is simple: accept quests, survive them, grow strong,
+      and one day face something big enough to ascend. Everything that happens
+      to you and to everyone else is told in the feed.
+    </p>
+    <ol class="help-steps">
+      <li>Pick a quest from the Bulletin Board that suits your level; the
+          colour of its CR is your guide.</li>
+      <li>The fight resolves at once, you alone against the whole warband.
+          Victory pays experience and coin; defeat costs nothing but pride and
+          a longer rest.</li>
+      <li>Rest. Every fight earns one, and you cannot quest again until it
+          ends.</li>
+      <li>Spend your coin at Absalom's on a better weapon and armour, and keep
+          swinging the same weapon until you master it.</li>
+      <li>Watch the feed: the Realm stirs on its own, and fortune (or a
+          cutpurse) may find you.</li>
+      <li>When you can survive a quest whose CR clears the ascension bar shown
+          in the header, you win the game.</li>
+    </ol>
+
+    <h2>Glossary</h2>
+    <dl class="glossary">
+      <dt>The Realm</dt>
+      <dd>The world of the game and everyone in it. It moves to a heartbeat of
+          a few minutes: quests are posted, events strike, the store restocks,
+          whether or not you are watching.</dd>
+
+      <dt>The feed</dt>
+      <dd>The Realm's chronicle. Everything public lands here: postings
+          (BOARD), happenings (EVENT), restocks (STORE), and the fights
+          themselves (QUEST). Private news comes to you alone.</dd>
+
+      <dt>Bulletin Board</dt>
+      <dd>Where quests are posted and claimed. Each carries a four-character
+          number; accepting one starts the fight immediately and takes the
+          posting off the board.</dd>
+
+      <dt>Quest</dt>
+      <dd>A warband of monsters to face alone. Win and you earn experience and
+          the same amount of coin; lose and you walk away with nothing but a
+          longer rest.</dd>
+
+      <dt>CR (challenge rating)</dt>
+      <dd>How dangerous a monster is; a quest's CR is the whole warband's added
+          together. Green means at or below your level, amber up to double it,
+          red deadlier still.</dd>
+
+      <dt>Strategy</dt>
+      <dd>Whom you strike first when facing many: <em>random</em> takes targets
+          at whim, <em>harsh</em> cuts down the weakest first, <em>rage</em>
+          the least dangerous, <em>wise</em> the most dangerous.</dd>
+
+      <dt>Resting</dt>
+      <dd>Every fight earns one, win or lose, and you cannot quest while it
+          lasts. Higher levels rest longer; defeat adds time, and a hard-won
+          victory shaves some off.</dd>
+
+      <dt>Level &amp; XP</dt>
+      <dd>Experience follows the D&amp;D fifth-edition table, up to level 20.
+          Each level adds hit points, strength and dexterity.</dd>
+
+      <dt>Coin</dt>
+      <dd>Won alongside experience, one for one, and occasionally found or
+          stolen from you by events. Spent at the store.</dd>
+
+      <dt>Absalom's Store</dt>
+      <dd>Weapons and armour in limited stock, replenished over time. Buying
+          replaces what you carry, and nothing is refunded.</dd>
+
+      <dt>Proficiency</dt>
+      <dd>Fight enough battles with one weapon and you master it: a lasting
+          bonus to hit while you wield it. Costly, heavy weapons take longer to
+          learn, and a new weapon starts the count over.</dd>
+
+      <dt>AC (armour class)</dt>
+      <dd>How hard you are to hit. Armour sets it, and lighter pieces add some
+          of your dexterity on top.</dd>
+
+      <dt>Events</dt>
+      <dd>The Realm acting on its own: purses found, potions drunk (blessed or
+          cursed), pockets picked, dragons sighted, whole parties pressed into
+          epic quests.</dd>
+
+      <dt>Ascension</dt>
+      <dd>Complete a single quest whose CR clears the bar in the header and you
+          win: your adventurer leaves the Realm in glory. Your name stays
+          yours: accept another quest to begin again, fresh at level one.</dd>
+
+      <dt>The purge</dt>
+      <dd>Go about a week without questing and your adventurer quietly leaves
+          the Realm. Your name and token remain yours; accept a quest to begin
+          anew.</dd>
+
+      <dt>Token</dt>
+      <dd>Your key to the Realm, shown once when you join and known to nobody
+          else. It cannot be reissued and signing out forgets it, so copy it
+          when it is offered and keep it safe.</dd>
+    </dl>
+  </div>
+  <div class="dialog-actions">
+    <button type="button" id="help-close">Close</button>
+  </div>
+</dialog>
 
 <div class="toast" id="toast" hidden></div>
 

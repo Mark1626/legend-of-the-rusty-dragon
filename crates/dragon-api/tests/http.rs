@@ -261,6 +261,40 @@ async fn the_feed_pages_forward_from_a_cursor() {
 }
 
 #[tokio::test]
+async fn the_feed_serves_a_backlog_of_the_newest_lines() {
+    let h = harness!();
+    h.join("Absalom").await;
+    h.join("Barnabas").await;
+
+    let (_, all) = h.get("/api/feed?since=0&limit=500").await;
+    let lines = all["lines"].as_array().unwrap();
+    assert!(lines.len() > 2, "not enough history to slice");
+
+    // `last` returns the newest lines in reading order, cursor at the tip —
+    // what a fresh session paints instead of opening on an empty channel.
+    let (status, tail) = h.get("/api/feed?last=2").await;
+    assert_eq!(status, StatusCode::OK, "{tail}");
+    let tail_lines = tail["lines"].as_array().unwrap();
+    assert_eq!(tail_lines.as_slice(), &lines[lines.len() - 2..]);
+    assert_eq!(tail["cursor"], all["cursor"]);
+
+    // Polling forward from the backlog's cursor replays nothing.
+    let cursor = tail["cursor"].as_i64().unwrap();
+    let (_, empty) = h.get(&format!("/api/feed?since={cursor}")).await;
+    assert!(empty["lines"].as_array().unwrap().is_empty(), "{empty}");
+
+    // The backlog can be narrowed to one player, like any feed read.
+    let (_, mine) = h.get("/api/feed?last=100&actor=Barnabas").await;
+    let mine = mine["lines"].as_array().unwrap();
+    assert!(!mine.is_empty());
+    assert!(mine.iter().all(|line| {
+        line["actors"].as_array().is_some_and(|actors| {
+            actors.iter().any(|a| a == "Barnabas")
+        })
+    }));
+}
+
+#[tokio::test]
 async fn the_feed_can_be_filtered_to_one_player() {
     let h = harness!();
     h.join("Absalom").await;
