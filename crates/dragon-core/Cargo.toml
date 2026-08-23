@@ -1,0 +1,10 @@
+[package]
+name = "dragon-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Legend of the Pink Dragon, as a pure state machine"
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }

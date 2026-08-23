@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Legend of the Rusty Dragon</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<link rel="stylesheet" href="style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>🐉</text></svg>">
+</head>
+<body>
+
+<header class="topbar">
+  <h1>Legend of the <span class="dragon">Rusty Dragon</span></h1>
+  <div class="realm" id="realm-status" hidden>
+    <span id="realm-players">—</span> in the Realm
+    <span class="sep">·</span>
+    running <span id="realm-uptime">—</span>
+    <span class="sep">·</span>
+    ascend at CR <span id="realm-ascension">—</span>
+  </div>
+  <div class="whoami" id="whoami" hidden>
+    <strong id="whoami-nick"></strong>
+    <button id="sign-out" class="link" type="button">sign out</button>
+  </div>
+</header>
+
+<!-- Joining ---------------------------------------------------------------->
+<section class="gate" id="gate">
+  <p class="gate-intro">
+    A tribute to <em>Legend of the Red Dragon</em>, moved off IRC. The Realm is
+    invitation-only.
+  </p>
+  <form id="join-form" autocomplete="off">
+    <label>
+      Your name
+      <input id="join-nick" name="nick" maxlength="24" required
+             pattern="[A-Za-z0-9][A-Za-z0-9_\-]*"
+             placeholder="Absalom" spellcheck="false">
+      <small>Letters, digits, <code>_</code> and <code>-</code>. Up to 24.</small>
+    </label>
+    <label>
+      Invitation key
+      <input id="join-invite" name="invite" type="password" required
+             placeholder="the key you were sent" spellcheck="false">
+    </label>
+    <button type="submit" id="join-submit">Enter the Realm</button>
+    <p class="error" id="join-error" hidden></p>
+  </form>
+</section>
+
+<!-- Playing ---------------------------------------------------------------->
+<main id="game" hidden>
+
+  <!-- The channel -->
+  <section class="panel feed-panel">
+    <h2>The Realm <span class="hint" id="feed-status"></span></h2>
+    <ol class="feed" id="feed" aria-live="polite"></ol>
+  </section>
+
+  <div class="sidebar">
+
+    <!-- Character sheet -->
+    <section class="panel" id="sheet-panel">
+      <h2>Your adventurer</h2>
+      <div id="sheet-absent" class="empty" hidden>
+        You have no character in the Realm. Accept a quest to begin again.
+      </div>
+      <dl class="sheet" id="sheet"></dl>
+      <div class="rest" id="rest" hidden>
+        Resting — <span id="rest-clock">—</span>
+      </div>
+      <label class="strategy">
+        Strategy
+        <select id="strategy">
+          <option value="random">random — a target at whim</option>
+          <option value="harsh">harsh — the weakest first</option>
+          <option value="rage">rage — the easiest first</option>
+          <option value="wise">wise — the most dangerous first</option>
+        </select>
+      </label>
+    </section>
+
+    <!-- Bulletin board -->
+    <section class="panel">
+      <h2>Bulletin Board <span class="hint" id="board-count"></span></h2>
+      <ul class="quests" id="board"></ul>
+    </section>
+
+    <!-- Store -->
+    <section class="panel">
+      <h2>Absalom's Store</h2>
+      <ul class="stock" id="store"></ul>
+    </section>
+
+    <!-- Standings -->
+    <section class="panel">
+      <h2>Best Adventurers</h2>
+      <ol class="scores" id="scores"></ol>
+    </section>
+
+  </div>
+</main>
+
+<div class="toast" id="toast" hidden></div>
+
+<script src="app.js"></script>
+</body>
+</html>

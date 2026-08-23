@@ -1,0 +1,230 @@
+[
+  {
+    "index": 38,
+    "name": "Padded",
+    "equipment_category": "Armor",
+    "armor_category": "Light",
+    "armor_class": {
+      "base": 11,
+      "dex_bonus": true,
+      "max_bonus": null
+    },
+    "str_minimum": 0,
+    "stealth_disadvantage": true,
+    "weight": 8,
+    "cost": {
+      "quantity": 5,
+      "unit": "gp"
+    },
+    "url": "http://www.dnd5eapi.co/api/equipment/38"
+  },
+  {
+    "index": 39,
+    "name": "Leather",
+    "equipment_category": "Armor",
+    "armor_category": "Light",
+    "armor_class": {
+      "base": 11,
+      "dex_bonus": true,
+      "max_bonus": null
+    },
+    "str_minimum": 0,
+    "stealth_disadvantage": false,
+    "weight": 10,
+    "cost": {
+      "quantity": 10,
+      "unit": "gp"
+    },
+    "url": "http://www.dnd5eapi.co/api/equipment/39"
+  },
+  {
+    "index": 40,
+    "name": "Studded Leather",
+    "equipment_category": "Armor",
+    "armor_category": "Light",
+    "armor_class": {
+      "base": 12,
+      "dex_bonus": true,
+      "max_bonus": null
+    },
+    "str_minimum": 0,
+    "stealth_disadvantage": false,
+    "weight": 13,
+    "cost": {
+      "quantity": 45,
+      "unit": "gp"
+    },
+    "url": "http://www.dnd5eapi.co/api/equipment/40"
+  },
+  {
+    "index": 41,
+    "name": "Hide",
+    "equipment_category": "Armor",
+    "armor_category": "Medium",
+    "armor_class": {
+      "base": 12,
+      "dex_bonus": true,
+      "max_bonus": 2
+    },
+    "str_minimum": 0,
+    "stealth_disadvantage": false,
+    "weight": 12,
+    "cost": {
+      "quantity": 10,
+      "unit": "gp"
+    },
+    "url": "http://www.dnd5eapi.co/api/equipment/41"
+  },
+  {
+    "index": 42,
+    "name": "Chain Shirt",
+    "equipment_category": "Armor",
+    "armor_category": "Medium",
+    "armor_class": {
+      "base": 13,
+      "dex_bonus": true,
+      "max_bonus": 2
+    },
+    "str_minimum": 0,
+    "stealth_disadvantage": false,
+    "weight": 20,
+    "cost": {
+      "quantity": 50,
+      "unit": "gp"
+    },
+    "url": "http://www.dnd5eapi.co/api/equipment/42"
+  },
+  {
+    "index": 43,
+    "name": "Scale Mail",
+    "equipment_category": "Armor",
+    "armor_category": "Medium",
+    "armor_class": {
+      "base": 14,
+      "dex_bonus": true,
+      "max_bonus": 2
+    },
+    "str_minimum": 0,
+    "stealth_disadvantage": true,
+    "weight": 45,
+    "cost": {
+      "quantity": 50,
+      "unit": "gp"
+    },
+    "url": "http://www.dnd5eapi.co/api/equipment/43"
+  },
+  {
+    "index": 44,
+    "name": "Breastplate",
+    "equipment_category": "Armor",
+    "armor_category": "Medium",
+    "armor_class": {
+      "base": 14,
+      "dex_bonus": true,
+      "max_bonus": 2
+    },
+    "str_minimum": 0,
+    "stealth_disadvantage": false,
+    "weight": 20,
+    "cost": {
+      "quantity": 400,
+      "unit": "gp"
+    },
+    "url": "http://www.dnd5eapi.co/api/equipment/44"
+  },
+  {
+    "index": 45,
+    "name": "Half Plate",
+    "equipment_category": "Armor",
+    "armor_category": "Medium",
+    "armor_class": {
+      "base": 15,
+      "dex_bonus": true,
+      "max_bonus": 2
+    },
+    "str_minimum": 0,
+    "stealth_disadvantage": true,
+    "weight": 40,
+    "cost": {
+      "quantity": 750,
+      "unit": "gp"
+    },
+    "url": "http://www.dnd5eapi.co/api/equipment/45"
+  },
+  {
+    "index": 46,
+    "name": "Ring Mail",
+    "equipment_category": "Armor",
+    "armor_category": "Heavy",
+    "armor_class": {
+      "base": 14,
+      "dex_bonus": false,
+      "max_bonus": null
+    },
+    "str_minimum": 0,
+    "stealth_disadvantage": true,
+    "weight": 40,
+    "cost": {
+      "quantity": 30,
+      "unit": "gp"
+    },
+    "url": "http://www.dnd5eapi.co/api/equipment/46"
+  },
+  {
+    "index": 47,
+    "name": "Chain Mail",
+    "equipment_category": "Armor",
+    "armor_category": "Heavy",
+    "armor_class": {
+      "base": 16,
+      "dex_bonus": false,
+      "max_bonus": null
+    },
+    "str_minimum": 13,
+    "stealth_disadvantage": true,
+    "weight": 55,
+    "cost": {
+      "quantity": 75,
+      "unit": "gp"
+    },
+    "url": "http://www.dnd5eapi.co/api/equipment/47"
+  },
+  {
+    "index": 48,
+    "name": "Splint",
+    "equipment_category": "Armor",
+    "armor_category": "Heavy",
+    "armor_class": {
+      "base": 17,
+      "dex_bonus": false,
+      "max_bonus": null
+    },
+    "str_minimum": 15,
+    "stealth_disadvantage": true,
+    "weight": 60,
+    "cost": {
+      "quantity": 200,
+      "unit": "gp"
+    },
+    "url": "http://www.dnd5eapi.co/api/equipment/48"
+  },
+  {
+    "index": 49,
+    "name": "Plate",
+    "equipment_category": "Armor",
+    "armor_category": "Heavy",
+    "armor_class": {
+      "base": 18,
+      "dex_bonus": false,
+      "max_bonus": null
+    },
+    "str_minimum": 15,
+    "stealth_disadvantage": true,
+    "weight": 65,
+    "cost": {
+      "quantity": 1500,
+      "unit": "gp"
+    },
+    "url": "http://www.dnd5eapi.co/api/equipment/49"
+  }
+]

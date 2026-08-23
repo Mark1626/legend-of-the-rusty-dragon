@@ -1,0 +1,47 @@
+# The root package is the Vercel deployment entry point. Vercel's Rust runtime
+# looks for `[[bin]]` entries under `api/`, so the shim has to live at the
+# project root; everything of substance is in the workspace members below.
+
+[package]
+name = "rusty-dragon"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Vercel entry point for Legend of the Rusty Dragon"
+# The root package is a shim with exactly one target. Turning off discovery
+# stops Cargo adopting anything that later appears in a conventional location.
+autobins = false
+autolib = false
+autotests = false
+autoexamples = false
+autobenches = false
+
+[[bin]]
+name = "index"
+path = "api/index.rs"
+
+[dependencies]
+dragon-api = { path = "crates/dragon-api" }
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+tower = "0.5"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+vercel_runtime = { version = "2", features = ["axum"] }
+
+[workspace]
+resolver = "3"
+members = ["crates/dragon-core", "crates/dragon-api"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "BSD-3-Clause"
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[profile.release]
+codegen-units = 1
+lto = "fat"
+opt-level = 3

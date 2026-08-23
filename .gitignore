@@ -1,0 +1,7 @@
+/target
+
+# Never commit real credentials. The README has you put a live Neon DSN, an
+# admin secret and an invitation key into .env; only the example is tracked.
+.env
+.env.*
+!.env.example

@@ -1,0 +1,14 @@
+# Keep the release binaries a prebuilt deployment needs, and nothing else from
+# the build directory — `target/` is otherwise gigabytes of intermediates.
+target/**
+!target/release
+!target/x86_64-unknown-linux-gnu/release/**
+!target/aarch64-unknown-linux-gnu/release/**
+
+# Nothing here is needed to serve the game.
+attic/
+tools/
+crates/dragon-core/examples/
+.env
+.env.*
+!.env.example
