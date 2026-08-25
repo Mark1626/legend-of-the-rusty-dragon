@@ -2,6 +2,7 @@
 name = "dragon-core"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 license.workspace = true
 description = "Legend of the Pink Dragon, as a pure state machine"
 

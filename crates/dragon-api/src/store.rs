@@ -25,7 +25,7 @@ use dragon_core::out::{Kind, Line, Span};
 use dragon_core::state::GameState;
 use dragon_core::step::{Input, Turn};
 use sqlx::postgres::{PgPool, PgPoolOptions};
-use sqlx::{QueryBuilder, Row};
+use sqlx::{Executor, QueryBuilder, Row};
 
 use crate::config::Config;
 
@@ -103,7 +103,7 @@ impl Store {
             .acquire_timeout(Duration::from_secs(ACQUIRE_TIMEOUT_SECS))
             .after_connect(|conn, _| {
                 Box::pin(async move {
-                    sqlx::raw_sql(SESSION_SETTINGS).execute(&mut *conn).await?;
+                    conn.execute(SESSION_SETTINGS).await?;
                     Ok(())
                 })
             })

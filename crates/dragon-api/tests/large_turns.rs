@@ -8,7 +8,7 @@ use std::sync::atomic::{AtomicU32, Ordering};
 use dragon_api::Store;
 use dragon_core::config::Pacing;
 use dragon_core::step::Input;
-use sqlx::AssertSqlSafe;
+use sqlx::Executor;
 use sqlx::postgres::PgPoolOptions;
 
 static COUNTER: AtomicU32 = AtomicU32::new(0);
@@ -23,9 +23,7 @@ async fn fresh() -> Option<Store> {
             move |conn, _| {
                 let schema = schema.clone();
                 Box::pin(async move {
-                    sqlx::query(AssertSqlSafe(format!("set search_path to {schema}")))
-                        .execute(&mut *conn)
-                        .await?;
+                    conn.execute(format!("set search_path to {schema}").as_str()).await?;
                     Ok(())
                 })
             }
@@ -33,7 +31,7 @@ async fn fresh() -> Option<Store> {
         .connect(&url)
         .await
         .unwrap();
-    sqlx::query(AssertSqlSafe(format!("create schema if not exists {schema}")))
+    sqlx::query(&format!("create schema if not exists {schema}"))
         .execute(&pool)
         .await
         .unwrap();

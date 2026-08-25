@@ -7,6 +7,7 @@ name = "rusty-dragon"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+rust-version.workspace = true
 description = "Vercel entry point for Legend of the Rusty Dragon"
 # The root package is a shim with exactly one target. Turning off discovery
 # stops Cargo adopting anything that later appears in a conventional location.
@@ -35,6 +36,10 @@ members = ["crates/dragon-core", "crates/dragon-api"]
 [workspace.package]
 version = "0.1.0"
 edition = "2024"
+# The compiler Vercel's Rust runtime builds with; `rust-toolchain.toml` pins the
+# same one locally. Declaring it here makes resolver 3 refuse a dependency whose
+# own MSRV has climbed past the deployment's compiler.
+rust-version = "1.92"
 license = "BSD-3-Clause"
 
 [workspace.dependencies]

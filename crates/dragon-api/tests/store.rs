@@ -19,7 +19,7 @@ use dragon_api::auth;
 use dragon_core::config::Pacing;
 use dragon_core::quest::QuestId;
 use dragon_core::step::{AdminCommand, Input};
-use sqlx::AssertSqlSafe;
+use sqlx::Executor;
 use sqlx::PgPool;
 use sqlx::postgres::PgPoolOptions;
 
@@ -47,9 +47,7 @@ async fn fresh_pool() -> Option<(PgPool, String)> {
             move |conn, _| {
                 let schema = schema.clone();
                 Box::pin(async move {
-                    sqlx::query(AssertSqlSafe(format!("set search_path to {schema}")))
-                        .execute(&mut *conn)
-                        .await?;
+                    conn.execute(format!("set search_path to {schema}").as_str()).await?;
                     Ok(())
                 })
             }
@@ -60,12 +58,10 @@ async fn fresh_pool() -> Option<(PgPool, String)> {
 
     // Audited: `schema` is built from the process id and a counter, never from
     // anything a caller supplies. An identifier cannot be a bind parameter.
-    sqlx::query(AssertSqlSafe(format!(
-        "create schema if not exists {schema}"
-    )))
-    .execute(&pool)
-    .await
-    .expect("could not create the test schema");
+    sqlx::query(&format!("create schema if not exists {schema}"))
+        .execute(&pool)
+        .await
+        .expect("could not create the test schema");
     Some((pool, schema))
 }
 

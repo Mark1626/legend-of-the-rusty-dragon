@@ -13,8 +13,8 @@ use dragon_api::{AppState, Store};
 use dragon_core::config::Pacing;
 use http_body_util::BodyExt;
 use serde_json::{Value, json};
+use sqlx::Executor;
 use sqlx::postgres::PgPoolOptions;
-use sqlx::AssertSqlSafe;
 use tower::ServiceExt;
 
 static COUNTER: AtomicU32 = AtomicU32::new(0);
@@ -59,9 +59,7 @@ impl Harness {
                 move |conn, _| {
                     let schema = schema.clone();
                     Box::pin(async move {
-                        sqlx::query(AssertSqlSafe(format!("set search_path to {schema}")))
-                            .execute(&mut *conn)
-                            .await?;
+                        conn.execute(format!("set search_path to {schema}").as_str()).await?;
                         Ok(())
                     })
                 }
@@ -71,7 +69,7 @@ impl Harness {
             .expect("could not connect to TEST_DATABASE_URL");
         // Audited: `schema` is built from the process id and a counter, never
         // from anything a caller supplies.
-        sqlx::query(AssertSqlSafe(format!("create schema if not exists {schema}")))
+        sqlx::query(&format!("create schema if not exists {schema}"))
             .execute(&pool)
             .await
             .unwrap();

@@ -2,6 +2,7 @@
 name = "dragon-api"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 license.workspace = true
 description = "Serverless hosting layer for Legend of the Pink Dragon"
 
@@ -18,7 +19,9 @@ serde_json = { workspace = true }
 # player out at once. The remedy is a pinned vetted crate, not a hand-rolled
 # one: `=` holds the exact version until the digests are deliberately migrated.
 sha2 = "=0.11.0"
-sqlx = { version = "0.9", default-features = false, features = [
+# 0.9 raised its MSRV to 1.94, past the 1.92 the deployment builds with; the
+# 0.8 line is the newest that still compiles on it.
+sqlx = { version = "0.8", default-features = false, features = [
     "postgres",
     "runtime-tokio",
     "tls-rustls-ring",
