@@ -1,5 +1,3 @@
-/* Legend of the Rusty Dragon — a channel you can read, not a dashboard. */
-
 :root {
   --ink: #e8e2d4;
   --ink-dim: #9a927f;
@@ -49,6 +47,10 @@
 }
 
 * { box-sizing: border-box; }
+
+/* The `hidden` attribute must beat author `display` rules (.feed li's grid,
+   main's grid): the UA sheet's plain [hidden] rule loses that fight. */
+[hidden] { display: none !important; }
 
 body {
   margin: 0;
@@ -205,6 +207,48 @@ main {
 .c-blue { color: var(--span-blue); }
 .c-magenta { color: var(--span-magenta); }
 
+/* ---------------------------------------------------------------- filter */
+
+.filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  margin-bottom: 0.6rem;
+}
+.filter-kinds { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+
+.chip {
+  font-family: var(--mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: none;
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  padding: 0.14rem 0.45rem;
+}
+.chip.system { color: var(--k-system); }
+.chip.b_board { color: var(--k-bboard); }
+.chip.store { color: var(--k-store); }
+.chip.event { color: var(--k-event); }
+.chip.quest { color: var(--k-quest); }
+.chip:hover:not(:disabled) { border-color: currentColor; }
+/* An unpressed chip reads as switched off: that kind is filtered out. */
+.chip[aria-pressed="false"] { opacity: 0.35; border-style: dashed; }
+
+.filter-player {
+  flex: 1 1 8rem;
+  width: auto;
+  min-width: 8rem;
+  margin-top: 0;
+  font-family: var(--mono);
+  font-size: 0.74rem;
+  padding: 0.22rem 0.5rem;
+}
+#filter-clear { font-size: 0.74rem; }
+#filter-empty { margin-top: 0.5rem; }
+
 /* ----------------------------------------------------------------- sheet */
 
 .sheet { display: grid; grid-template-columns: auto 1fr; gap: 0.2rem 0.9rem; margin: 0 0 0.85rem; font-size: 0.87rem; }
@@ -251,6 +295,23 @@ main {
 }
 .qbody, .ibody { flex: 1 1 auto; min-width: 0; }
 .qname { display: block; }
+
+/* what a posting pays, how it is likely to go, and whether it ends the game */
+.qmeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.15rem;
+  font-size: 0.74rem;
+}
+.qreward { color: var(--gold); font-variant-numeric: tabular-nums; }
+.qodds { font-variant-numeric: tabular-nums; }
+.qascend {
+  color: var(--span-magenta);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 0.68rem;
+}
 .cost { color: var(--gold); font-variant-numeric: tabular-nums; font-size: 0.8rem; }
 .detail { color: var(--ink-faint); font-size: 0.76rem; }
 
@@ -261,10 +322,16 @@ main {
   border-radius: 4px;
 }
 
-/* difficulty cue, relative to the player's level */
+/* difficulty cue: the sampled odds where there are any, level otherwise */
 .cr-easy   { color: var(--span-green); }
 .cr-fair   { color: var(--span-yellow); }
 .cr-deadly { color: var(--span-red); }
+
+.odds-safe  { color: var(--span-green); }
+.odds-good  { color: var(--span-green); }
+.odds-even  { color: var(--span-yellow); }
+.odds-risky { color: var(--span-red); }
+.odds-grim  { color: var(--span-red); font-weight: 600; }
 
 /* --------------------------------------------------------------- scores */
 

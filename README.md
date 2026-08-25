@@ -46,22 +46,6 @@ cargo run -p dragon-api --bin dragon-server
 | `POST /api/tick`                  | optional heartbeat                                |
 | `POST /api/admin`                 | the reference's admin commands                    |
 
-### Signing up
-
-The Realm is invitation-only. `POST /api/join` requires one of the keys in
-`INVITE_KEY`.
-
-```sh
-curl -s -X POST localhost:3000/api/join \
-  -H 'content-type: application/json' \
-  -d '{"nick":"Absalom","invite":"the-key-you-shared"}'
-```
-
-Attempts are rate-limited per caller (10 an hour by default) and **failures
-count** — a wrong key, a taken name and a malformed name all spend budget. That
-is what bounds a leaked key, and what stops the taken-name reply being used to
-enumerate the roster.
-
 ## Deploying to Vercel
 
 One function serves everything. `vercel.json` rewrites `/api/(.*)` to
@@ -81,39 +65,10 @@ vercel deploy
 The schema is created on the first cold start and the Realm opens itself on the
 first request, so there is no migration step.
 
-**Connection pooling is not optional.** Every concurrent invocation opens its
-own pool, so point `DATABASE_URL` at Neon's pooled endpoint and leave
-`DB_MAX_CONNECTIONS` small (it defaults to 3).
-
-**Only `public/` is served.** `vercel.json` sets `outputDirectory`, so the web
-root is a directory you deliberately put files in. Without it Vercel falls back
-to serving the *repository root* — every source file, `Cargo.lock` and all —
-because with no framework preset the output directory is `public` if it exists
-and `.` otherwise.
-
-**TLS is verified.** A `DATABASE_URL` with no `sslmode` gets `verify-full`
-added. This is worth knowing about rather than trusting blindly: sqlx defaults
-to `prefer`, and for every mode below `verify-ca` it installs a certificate
-verifier that accepts anything — so Neon's suggested `sslmode=require` encrypts
-the connection without authenticating the server. An explicit `sslmode` is
-always respected, and anything weaker than `verify-full` logs a warning.
-
-### About the heartbeat
+### World Progress
 
 The game ticks lazily, so **no cron is required** — any request settles the
-clock first. `vercel.json` deliberately ships without a `crons` entry, because
-Vercel's Hobby plan rejects any schedule that fires more than once a day and the
-deployment would fail. On Pro, add one:
-
-```json
-"crons": [{ "path": "/api/tick", "schedule": "*/5 * * * *" }]
-```
-
-Set `CRON_SECRET` alongside it if you want the route authenticated; leaving it
-unset is safe rather than dangerous, because a heartbeat that finds no tick owed
-does no work at all. A heartbeat is worth having only so a Realm nobody is
-looking at keeps living; without one, an empty Realm simply pauses until
-somebody arrives, which is arguably what it should do.
+clock first.
 
 ## Tests
 
@@ -148,30 +103,6 @@ without a rebuild. Measured with 12 bots questing around the clock:
 
 Those bots play optimally and never sleep, so treat the times as a floor for an
 obsessive player rather than a typical experience.
-
-## Deliberate departures from the reference
-
-Three are bug fixes, and are commented at their sites:
-
-* **Event 24 (stealing) never ran.** `event.py:444` reads `u.dexterity`, which
-  is unbound on that branch — an `UnboundLocalError` every time it was drawn,
-  one event in twenty-six. Ported as the thief's dexterity, which was plainly
-  the intent. A player can also no longer pick their own pocket.
-* **The battle loop was unbounded** — the reference's own standing TODO. Two
-  combatants who cannot hurt each other spin forever, which under a request
-  timeout is a lost turn. Now capped, with deadlock detection ahead of it.
-  `battle`'s `return warriors[0]` on an empty roster is a `None` rather than an
-  `IndexError`.
-* **Ability-check tie-breaks could loop forever.** Capped.
-
-And two are consequences of the move:
-
-* **Durations are wall-clock, not tick counts.** The reference purges at 896
-  ticks and runs event cooldowns at 16/24/32/64/256 ticks, which is only safe
-  while the tick length never moves. It moved.
-* **The periodic board and store dumps left the feed.** IRC had to broadcast the
-  whole board because a channel cannot be asked; `GET /api/state` can. The feed
-  keeps the news — what arrived, what sold, who won — and drops the recitals.
 
 ## Assets
 

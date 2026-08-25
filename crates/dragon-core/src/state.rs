@@ -74,11 +74,16 @@ impl GameState {
         let mut rng = GameRng::seed_from_u64(seed);
         let mut out = Out::new();
 
+        out.broadcast(Line::system().accent(
+            crate::out::Color::Red,
+            "** The Legend of the Rusty Dragon **",
+        ));
         out.broadcast(
             Line::system()
-                .accent(crate::out::Color::Red, "** The Legend of the Pink Dragon **"),
+                .text("Version ")
+                .text(version())
+                .text(" of the game"),
         );
-        out.broadcast(Line::system().text("Version ").text(version()).text(" of the game"));
         out.announce(format!("New game is starting (version {}).", version()));
 
         let state = Self {
@@ -107,7 +112,11 @@ impl GameState {
             return 0;
         }
         let elapsed = now - self.last_tick_at;
-        if elapsed <= 0 { 0 } else { (elapsed / self.pacing.tick_secs) as u64 }
+        if elapsed <= 0 {
+            0
+        } else {
+            (elapsed / self.pacing.tick_secs) as u64
+        }
     }
 
     /// Run one beat of the world at virtual time `now`.
@@ -147,7 +156,9 @@ impl GameState {
         for nick in gone {
             self.users.remove(&nick);
             out.broadcast(
-                Line::system().nick(&nick).text(" has left the Realm with no glory."),
+                Line::system()
+                    .nick(&nick)
+                    .text(" has left the Realm with no glory."),
             );
         }
     }
@@ -203,14 +214,20 @@ impl GameState {
             && let Some(accepted) = user.set_strategy(name)
         {
             out.reply(
-                Line::system().text("Your strategy is now \"").text(accepted).text("\"."),
+                Line::system()
+                    .text("Your strategy is now \"")
+                    .text(accepted)
+                    .text("\"."),
             );
         }
 
         let known = self.bboard.contains(id);
         if !known {
             out.reply(
-                Line::quest().text("The quest ").text(id).text(" is currently unavailable!"),
+                Line::quest()
+                    .text("The quest ")
+                    .text(id)
+                    .text(" is currently unavailable!"),
             );
         }
 
@@ -278,15 +295,10 @@ impl GameState {
     fn ascend(&mut self, user: &mut User, now: i64, out: &mut Out) -> String {
         let played = time_display(now - user.created_at);
         out.broadcast(Line::system().bold("** New Ascension **"));
-        out.broadcast(
-            Line::system()
-                .bold("** ")
-                .nick(&user.nick)
-                .bold(format!(
-                    " (level {}) has completed the game in {played}! **",
-                    user.level
-                )),
-        );
+        out.broadcast(Line::system().bold("** ").nick(&user.nick).bold(format!(
+            " (level {}) has completed the game in {played}! **",
+            user.level
+        )));
         out.broadcast(
             Line::system()
                 .nick(&user.nick)
@@ -363,7 +375,7 @@ mod tests {
         assert!(!state.killed);
 
         let said = out.transcript().join(" ");
-        assert!(said.contains("The Legend of the Pink Dragon"), "{said}");
+        assert!(said.contains("The Legend of the Rusty Dragon"), "{said}");
         assert!(said.contains(version()), "{said}");
         assert_eq!(out.announce.len(), 1);
     }
@@ -451,7 +463,10 @@ mod tests {
 
         let mut out = Out::new();
         assert!(!state.admit("Absalom", 2_000, &mut out));
-        assert!(out.feed.is_empty(), "a returning player is not re-announced");
+        assert!(
+            out.feed.is_empty(),
+            "a returning player is not re-announced"
+        );
     }
 
     #[test]
@@ -505,13 +520,20 @@ mod tests {
         let now = 1_000_000;
         let id = state.bboard.posted()[0].0;
 
-        assert!(state.accept_quest("Absalom", id, None, now, &mut rng, &mut out).is_none());
+        assert!(
+            state
+                .accept_quest("Absalom", id, None, now, &mut rng, &mut out)
+                .is_none()
+        );
         assert!(state.users.contains_key("Absalom"));
 
         let said = out.transcript().join(" ");
         assert!(said.contains("has entered the Realm!"), "{said}");
         assert!(said.contains("has accepted quest"), "{said}");
-        assert!(said.contains("has won!") || said.contains("has lost!"), "{said}");
+        assert!(
+            said.contains("has won!") || said.contains("has lost!"),
+            "{said}"
+        );
         assert_eq!(state.users["Absalom"].last_quest_at, now);
     }
 
@@ -523,7 +545,11 @@ mod tests {
         let now = 1_000_000;
         state.accept_quest("Absalom", QuestId(0xDEAD), None, now, &mut rng, &mut out);
 
-        assert!(out.reply.iter().any(|l| l.plain().contains("currently unavailable")));
+        assert!(
+            out.reply
+                .iter()
+                .any(|l| l.plain().contains("currently unavailable"))
+        );
         let user = &state.users["Absalom"];
         assert_eq!((user.quest_win, user.quest_lost), (0, 0));
         assert!(!user.is_resting(now));
@@ -543,7 +569,11 @@ mod tests {
         state.accept_quest("Absalom", id, None, now, &mut rng, &mut out);
 
         assert!(out.feed.is_empty(), "no fight is broadcast");
-        assert!(out.reply.iter().any(|l| l.plain().contains("You must rest for")));
+        assert!(
+            out.reply
+                .iter()
+                .any(|l| l.plain().contains("You must rest for"))
+        );
         assert!(state.bboard.contains(id), "the quest stays posted");
     }
 
@@ -555,7 +585,11 @@ mod tests {
         let id = state.bboard.posted()[0].0;
         state.accept_quest("Absalom", id, Some("wise"), 1_000_000, &mut rng, &mut out);
 
-        assert!(out.reply.iter().any(|l| l.plain().contains("strategy is now \"wise\"")));
+        assert!(
+            out.reply
+                .iter()
+                .any(|l| l.plain().contains("strategy is now \"wise\""))
+        );
         assert_eq!(state.users["Absalom"].strategy, crate::PlayerStrategy::Wise);
     }
 
@@ -566,7 +600,11 @@ mod tests {
         let mut out = Out::new();
         let id = state.bboard.posted()[0].0;
         state.accept_quest("A", id, Some("reckless"), 1_000_000, &mut rng, &mut out);
-        assert!(!out.reply.iter().any(|l| l.plain().contains("strategy is now")));
+        assert!(
+            !out.reply
+                .iter()
+                .any(|l| l.plain().contains("strategy is now"))
+        );
         assert_eq!(state.users["A"].strategy, crate::PlayerStrategy::Random);
     }
 
@@ -585,9 +623,18 @@ mod tests {
             hero.hp = 100_000;
             hero.strength = 200;
             hero.money = 100_000_000;
-            hero.buy(assets::items().iter().find(|i| i.name == "Greatsword").unwrap().id);
+            hero.buy(
+                assets::items()
+                    .iter()
+                    .find(|i| i.name == "Greatsword")
+                    .unwrap()
+                    .id,
+            );
         }
-        let frog = assets::monsters().iter().position(|m| m.name == "Frog").unwrap() as u16;
+        let frog = assets::monsters()
+            .iter()
+            .position(|m| m.name == "Frog")
+            .unwrap() as u16;
         let legendary = crate::Quest::from_roster(vec![frog; 1], now);
         let id = state.bboard.add_quest(Some(0), now, &mut rng);
         *state.bboard.get_mut(id).unwrap() = legendary;
@@ -595,11 +642,15 @@ mod tests {
         state.pacing.ascension_cr = Cr::ZERO;
 
         let mut out = Out::new();
-        let announcement =
-            state.accept_quest("Hero", id, None, now, &mut rng, &mut out).unwrap();
+        let announcement = state
+            .accept_quest("Hero", id, None, now, &mut rng, &mut out)
+            .unwrap();
 
         assert!(announcement.contains("has ascended"), "{announcement}");
-        assert!(!state.users.contains_key("Hero"), "an ascended player leaves");
+        assert!(
+            !state.users.contains_key("Hero"),
+            "an ascended player leaves"
+        );
         let said = out.transcript().join(" ");
         assert!(said.contains("** New Ascension **"), "{said}");
         assert!(said.contains("reincarnate"), "{said}");

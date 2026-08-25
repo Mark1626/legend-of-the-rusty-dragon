@@ -5,7 +5,7 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 
 use crate::assets::{self, ItemId, ItemStats, MonsterId};
-use crate::battle::{Attack, PlayerStrategy, Strategy, Warrior, battle};
+use crate::battle::{Attack, PlayerStrategy, Strategy, Warrior, WarriorId, battle};
 use crate::config::{Pacing, time_display};
 use crate::numeric::{Cr, ability_modifier, bit_length};
 use crate::out::{Line, Out};
@@ -17,6 +17,10 @@ const LEVEL_THRESHOLDS: [i64; 20] = [
     0, 300, 900, 2_700, 6_500, 14_000, 23_000, 34_000, 48_000, 64_000, 85_000, 100_000,
     120_000, 140_000, 165_000, 195_000, 225_000, 265_000, 305_000, 355_000,
 ];
+
+/// Where the adventurer sits in a solo quest's roster. Monsters hunt by index,
+/// so this is the one place that number is written down.
+pub const PLAYER: WarriorId = 0;
 
 /// XP awarded for defeating a monster of CR 1 through 30.
 const XP_BY_CR: [i64; 30] = [
@@ -220,8 +224,7 @@ impl User {
             return;
         }
 
-        let required =
-            (bit_length(weapon.cost as u64) * bit_length(weapon.weight as u64)) >> 1;
+        let required = mastery_threshold(weapon);
         if self.weapon_count >= required {
             self.proficiency_bonus = (self.level + 7) >> 2;
         }
@@ -236,6 +239,19 @@ impl User {
                     .text("!"),
             );
         }
+    }
+
+    /// Progress toward mastering the wielded weapon: fights fought so far and
+    /// fights required. `None` bare-handed, where mastery never comes.
+    pub fn mastery(&self) -> Option<(u32, u32)> {
+        let weapon = self.weapon.and_then(assets::item)?;
+        Some((self.weapon_count, mastery_threshold(weapon)))
+    }
+
+    /// The flat bonus every weapon hit adds: the strength modifier alone.
+    /// Proficiency raises the roll to hit, never the harm done.
+    pub fn damage_bonus(&self) -> i32 {
+        ability_modifier(self.strength)
     }
 
     /// The dice a player's weapon contributes. A bare-handed adventurer rolls
@@ -260,7 +276,7 @@ impl User {
             vec![Attack {
                 attack_bonus: strength_mod + self.proficiency_bonus,
                 damage: self.weapon_damage(),
-                damage_bonus: strength_mod,
+                damage_bonus: self.damage_bonus(),
             }],
             self.dexterity,
             self.ac,
@@ -289,6 +305,21 @@ impl User {
         warrior
     }
 
+    /// Line up a solo quest: this adventurer at [`PLAYER`], then the warband.
+    ///
+    /// Shared with [`crate::odds`], which fights the same roster over and over
+    /// to estimate the odds. Two musterings would be two combat setups, and the
+    /// estimate would quietly stop describing the fight it predicts.
+    pub fn muster(&self, quest: &Quest, rng: &mut GameRng) -> Vec<Warrior> {
+        let mut warriors: Vec<Warrior> = Vec::with_capacity(quest.monsters().len() + 1);
+        // The adventurer goes in first so the monsters know who to hunt.
+        warriors.push(self.build_warrior(Strategy::Solo(self.strategy), false));
+        for &id in quest.monsters() {
+            warriors.push(Warrior::monster(id, Strategy::HuntPlayer(PLAYER), rng));
+        }
+        warriors
+    }
+
     /// Take on a quest. Returns whether the adventurer prevailed.
     ///
     /// Cost and stock have already been settled by the caller; this resolves
@@ -301,15 +332,8 @@ impl User {
         rng: &mut GameRng,
         out: &mut Out,
     ) -> bool {
-        let mut warriors: Vec<Warrior> = Vec::with_capacity(quest.monsters().len() + 1);
-        // The adventurer goes in first so the monsters know who to hunt.
-        warriors.push(self.build_warrior(Strategy::Solo(self.strategy), false));
-        let me = 0;
-        for &id in quest.monsters() {
-            warriors.push(Warrior::monster(id, Strategy::HuntPlayer(me), rng));
-        }
-
-        let victory = battle(&mut warriors, rng).won_by(me);
+        let mut warriors = self.muster(quest, rng);
+        let victory = battle(&mut warriors, rng).won_by(PLAYER);
 
         if victory {
             self.quest_win += 1;
@@ -400,6 +424,12 @@ impl User {
         }
         line
     }
+}
+
+/// Fights needed to master a weapon. Expensive, heavy weapons take longer:
+/// the threshold spans 2 to 32 fights across the catalogue.
+fn mastery_threshold(weapon: &assets::Item) -> u32 {
+    (bit_length(weapon.cost as u64) * bit_length(weapon.weight as u64)) >> 1
 }
 
 #[cfg(test)]
@@ -563,6 +593,26 @@ mod tests {
         assert!(u.buy(item_named("Greatsword")));
         assert_eq!(u.weapon_count, 0);
         assert_eq!(u.proficiency_bonus, 0, "a new weapon starts unmastered");
+    }
+
+    #[test]
+    fn mastery_progress_matches_the_moment_the_bonus_is_granted() {
+        let mut u = User::new("A", 0);
+        u.money = 10_000;
+        assert!(u.mastery().is_none(), "bare hands can never be mastered");
+
+        assert!(u.buy(item_named("Club")));
+        let (fights, required) = u.mastery().unwrap();
+        assert_eq!(fights, 0);
+
+        let mut out = Out::new();
+        for _ in 1..required {
+            u.compute_proficiency(&mut out);
+            assert_eq!(u.proficiency_bonus, 0, "no bonus before the threshold");
+        }
+        u.compute_proficiency(&mut out);
+        assert!(u.proficiency_bonus > 0, "the bonus lands exactly at the threshold");
+        assert_eq!(u.mastery().unwrap().0, required);
     }
 
     #[test]

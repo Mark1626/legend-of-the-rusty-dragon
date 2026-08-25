@@ -486,7 +486,7 @@ mod tests {
         assert!(!state.killed);
         assert!(state.users.is_empty(), "a restart clears the Realm");
         assert_eq!(state.bboard.len(), 16);
-        assert!(turn.out.transcript().iter().any(|l| l.contains("Pink Dragon")));
+        assert!(turn.out.transcript().iter().any(|l| l.contains("Rusty Dragon")));
     }
 
     #[test]

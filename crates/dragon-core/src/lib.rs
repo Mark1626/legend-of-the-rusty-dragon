@@ -23,6 +23,7 @@ pub mod config;
 pub mod dice;
 pub mod event;
 pub mod numeric;
+pub mod odds;
 pub mod out;
 pub mod quest;
 pub mod rng;

@@ -10,7 +10,9 @@ use axum::{Json, Router, routing};
 use dragon_core::assets::{self, ItemKind, ItemStats};
 use dragon_core::config::time_display;
 use dragon_core::quest::QuestId;
+use dragon_core::odds;
 use dragon_core::state::GameState;
+use dragon_core::user;
 use dragon_core::step::{AdminCommand, Input};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -288,9 +290,35 @@ async fn me(
             json!({ "id": item.id, "name": item.name, "cost": item.cost })
         })
     };
+    // The sheet wants more from the weapon slot than from the armor slot:
+    // the die a hit rolls and the flat bonus added to every hit.
+    let weapon = user.weapon.and_then(assets::item).map(|item| {
+        let mut value = json!({ "id": item.id, "name": item.name, "cost": item.cost });
+        if let ItemStats::Weapon { damage } = item.stats {
+            value["damage"] = json!({
+                "display": damage.to_string(),
+                "min": damage.count,
+                "max": damage.max(),
+                "bonus": user.damage_bonus(),
+            });
+        }
+        value
+    });
+    // How each posted quest is likely to go for this character. The board on
+    // `/api/state` is the Realm's, identical for everyone who asks; this is the
+    // half of it that is not, so it lives on the authenticated sheet instead.
+    let outlook: serde_json::Map<String, Value> = state
+        .bboard
+        .posted()
+        .into_iter()
+        .map(|(id, quest)| (id.to_string(), json!(odds::win_chance(user, quest))))
+        .collect();
+
     Ok(Json(json!({
         "nick": user.nick,
         "in_realm": true,
+        "outlook": outlook,
+        "outlook_trials": odds::TRIALS,
         "level": user.level,
         "xp": user.xp,
         "money": user.money,
@@ -299,9 +327,13 @@ async fn me(
         "strength": user.strength,
         "dexterity": user.dexterity,
         "strategy": user.strategy,
-        "weapon": gear(user.weapon),
+        "weapon": weapon,
         "armor": gear(user.armor),
         "proficiency_bonus": user.proficiency_bonus,
+        "mastery": user.mastery().map(|(fights, required)| json!({
+            "fights": fights,
+            "required": required,
+        })),
         "quests_won": user.quest_win,
         "quests_lost": user.quest_lost,
         "resting_until": user.idle_until,
@@ -330,6 +362,10 @@ async fn state(State(app): State<AppState>) -> ApiResult<Json<Value>> {
                 "id": id.to_string(),
                 "total_cr": quest.total_cr().to_string(),
                 "display": quest.display(),
+                // Paid twice over on a win: once as experience, once as coin.
+                // Derived from the warband rather than stored, so the board can
+                // never advertise a purse the fight would not hand over.
+                "reward": user::quest_xp(quest),
                 "monsters": quest.groups().iter().map(|group| json!({
                     "name": group.name(),
                     "count": group.count,

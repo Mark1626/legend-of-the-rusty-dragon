@@ -61,6 +61,7 @@ cargo run --release -p dragon-core --example simulate -- \
 - `battle.rs` — D&D5 combat resolver, bounded
 - `event.rs` — all 26 random events
 - `quest.rs` `bboard.rs` `shop.rs` `user.rs` — the subsystems
+- `odds.rs` — what a posting is worth to a given player, sampled by fighting it
 - `out.rs` — `Line`/`Span`: structured output replacing IRC control codes
 - `rng.rs` — hand-rolled xoshiro256++; `numeric.rs` — `bit_length`, `ability_modifier`, `Cr`
 - `assets.rs` — 325 monsters and 40 items, `include_str!`-compiled
@@ -175,23 +176,23 @@ authenticating the server.
 ## Testing
 
 ```bash
-cargo test --workspace                 # 308
+cargo test --workspace                 # 322
 export TEST_DATABASE_URL="postgres://dragon:dragon@localhost:55432/dragon"
-cargo test --workspace                 # 308, and 53 of them actually run
+cargo test --workspace                 # 322, and 56 of them actually run
 ```
 
-**A green run without `TEST_DATABASE_URL` proves less than it looks.** The 53
+**A green run without `TEST_DATABASE_URL` proves less than it looks.** The 56
 database tests return early when the variable is absent and are counted as
-*passing*, so the total is 308 either way. Any change touching SQL, the turn
+*passing*, so the total is 322 either way. Any change touching SQL, the turn
 transaction, or an endpoint has to be run against a real Postgres to have been
 tested at all.
 
 | | |
 |---|---|
-| `dragon-core` unit | 219 — the game rules |
+| `dragon-core` unit | 230 — the game rules |
 | `dragon-api` unit | 36 — config, auth, error mapping, line rendering |
 | `tests/store.rs` | 17 — persistence, feed paging, concurrency |
-| `tests/http.rs` | 30 — every endpoint, status codes, the invitation gate |
+| `tests/http.rs` | 33 — every endpoint, status codes, the invitation gate |
 | `tests/contention.rs` | 5 — a stranded lock, the tick-boundary herd |
 | `tests/large_turns.rs` | 1 — the bind-parameter ceiling |
 

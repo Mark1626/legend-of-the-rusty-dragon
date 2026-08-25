@@ -1,254 +1,427 @@
 <!doctype html>
 <html lang="en">
-<head>
-<meta charset="utf-8">
-<title>Legend of the Rusty Dragon</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="color-scheme" content="dark light">
-<link rel="stylesheet" href="style.css">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>🐉</text></svg>">
-</head>
-<body>
+    <head>
+        <meta charset="utf-8" />
+        <title>Legend of the Rusty Dragon</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="color-scheme" content="dark light" />
+        <link rel="stylesheet" href="style.css" />
+        <link
+            rel="icon"
+            href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>🐉</text></svg>"
+        />
+    </head>
+    <body>
+        <header class="topbar">
+            <h1>Legend of the <span class="dragon">Rusty Dragon</span></h1>
+            <div class="realm" id="realm-status" hidden>
+                <span id="realm-players">—</span> in the Realm
+                <span class="sep">·</span>
+                running <span id="realm-uptime">—</span>
+                <span class="sep">·</span>
+                ascend at CR <span id="realm-ascension">—</span>
+            </div>
+            <nav class="topmenu">
+                <div class="whoami" id="whoami" hidden>
+                    <strong id="whoami-nick"></strong>
+                    <button id="help-open" class="link" type="button">
+                        help
+                    </button>
+                    <button id="sign-out" class="link" type="button">
+                        sign out
+                    </button>
+                </div>
+            </nav>
+        </header>
 
-<header class="topbar">
-  <h1>Legend of the <span class="dragon">Rusty Dragon</span></h1>
-  <div class="realm" id="realm-status" hidden>
-    <span id="realm-players">—</span> in the Realm
-    <span class="sep">·</span>
-    running <span id="realm-uptime">—</span>
-    <span class="sep">·</span>
-    ascend at CR <span id="realm-ascension">—</span>
-  </div>
-  <nav class="topmenu">
-    <div class="whoami" id="whoami" hidden>
-      <strong id="whoami-nick"></strong>
-      <button id="sign-out" class="link" type="button">sign out</button>
-    </div>
-    <button id="help-open" class="link" type="button">help</button>
-  </nav>
-</header>
+        <!-- Joining ---------------------------------------------------------------->
+        <section class="gate" id="gate">
+            <p class="gate-intro">
+                A tribute to <em>Legend of the Red Dragon</em>, based on Legend
+                of the Red Dragon. The Realm is invitation-only.
+            </p>
+            <form id="join-form" autocomplete="off">
+                <label>
+                    Your name
+                    <input
+                        id="join-nick"
+                        name="nick"
+                        maxlength="24"
+                        required
+                        pattern="[A-Za-z0-9][A-Za-z0-9_\-]*"
+                        placeholder="Absalom"
+                        spellcheck="false"
+                    />
+                    <small
+                        >Letters, digits, <code>_</code> and <code>-</code>. Up
+                        to 24.</small
+                    >
+                </label>
+                <label>
+                    Invitation key
+                    <input
+                        id="join-invite"
+                        name="invite"
+                        type="password"
+                        required
+                        placeholder="the key you were sent"
+                        spellcheck="false"
+                    />
+                </label>
+                <button type="submit" id="join-submit">Enter the Realm</button>
+                <p class="error" id="join-error" hidden></p>
+            </form>
 
-<!-- Joining ---------------------------------------------------------------->
-<section class="gate" id="gate">
-  <p class="gate-intro">
-    A tribute to <em>Legend of the Red Dragon</em>, moved off IRC. The Realm is
-    invitation-only.
-  </p>
-  <form id="join-form" autocomplete="off">
-    <label>
-      Your name
-      <input id="join-nick" name="nick" maxlength="24" required
-             pattern="[A-Za-z0-9][A-Za-z0-9_\-]*"
-             placeholder="Absalom" spellcheck="false">
-      <small>Letters, digits, <code>_</code> and <code>-</code>. Up to 24.</small>
-    </label>
-    <label>
-      Invitation key
-      <input id="join-invite" name="invite" type="password" required
-             placeholder="the key you were sent" spellcheck="false">
-    </label>
-    <button type="submit" id="join-submit">Enter the Realm</button>
-    <p class="error" id="join-error" hidden></p>
-  </form>
+            <div class="gate-return">
+                <h2>Returning to the Realm?</h2>
+                <form id="return-form" autocomplete="off">
+                    <label>
+                        Your token
+                        <input
+                            id="return-token"
+                            type="password"
+                            required
+                            placeholder="the token you were given when you joined"
+                            spellcheck="false"
+                        />
+                        <small
+                            >Issued once, when you first joined. It is the only
+                            way back in.</small
+                        >
+                    </label>
+                    <button type="submit" id="return-submit">
+                        Return to the Realm
+                    </button>
+                    <p class="error" id="return-error" hidden></p>
+                </form>
+            </div>
+        </section>
 
-  <div class="gate-return">
-    <h2>Returning to the Realm?</h2>
-    <form id="return-form" autocomplete="off">
-      <label>
-        Your token
-        <input id="return-token" type="password" required
-               placeholder="the token you were given when you joined" spellcheck="false">
-        <small>Issued once, when you first joined. It is the only way back in.</small>
-      </label>
-      <button type="submit" id="return-submit">Return to the Realm</button>
-      <p class="error" id="return-error" hidden></p>
-    </form>
-  </div>
-</section>
+        <!-- Playing ---------------------------------------------------------------->
+        <main id="game" hidden>
+            <!-- The channel -->
+            <section class="panel feed-panel">
+                <h2>The Realm <span class="hint" id="feed-status"></span></h2>
+                <div class="filter" role="group" aria-label="Filter the feed">
+                    <div class="filter-kinds" id="filter-kinds">
+                        <button
+                            type="button"
+                            class="chip system"
+                            data-kind="system"
+                            aria-pressed="true"
+                        >
+                            System
+                        </button>
+                        <button
+                            type="button"
+                            class="chip b_board"
+                            data-kind="b_board"
+                            aria-pressed="true"
+                        >
+                            Board
+                        </button>
+                        <button
+                            type="button"
+                            class="chip store"
+                            data-kind="store"
+                            aria-pressed="true"
+                        >
+                            Store
+                        </button>
+                        <button
+                            type="button"
+                            class="chip event"
+                            data-kind="event"
+                            aria-pressed="true"
+                        >
+                            Event
+                        </button>
+                        <button
+                            type="button"
+                            class="chip quest"
+                            data-kind="quest"
+                            aria-pressed="true"
+                        >
+                            Quest
+                        </button>
+                    </div>
+                    <input
+                        id="filter-player"
+                        class="filter-player"
+                        list="player-names"
+                        placeholder="player name"
+                        spellcheck="false"
+                        autocomplete="off"
+                        aria-label="Show only lines naming this player"
+                    />
+                    <datalist id="player-names"></datalist>
+                    <button id="filter-clear" class="link" type="button" hidden>
+                        clear
+                    </button>
+                </div>
+                <ol class="feed" id="feed" aria-live="polite"></ol>
+                <div class="empty" id="filter-empty" hidden>
+                    Nothing in view matches the filter.
+                </div>
+            </section>
 
-<!-- Playing ---------------------------------------------------------------->
-<main id="game" hidden>
+            <div class="sidebar">
+                <!-- Character sheet -->
+                <section class="panel" id="sheet-panel">
+                    <h2>Your adventurer</h2>
+                    <div id="sheet-absent" class="empty" hidden>
+                        You have no character in the Realm. Accept a quest to
+                        begin again.
+                    </div>
+                    <dl class="sheet" id="sheet"></dl>
+                    <div class="rest" id="rest" hidden>
+                        Resting <span id="rest-clock">—</span>
+                    </div>
+                    <label class="strategy">
+                        Strategy
+                        <select id="strategy">
+                            <option value="random">
+                                Random - Attack a random enemy at whim
+                            </option>
+                            <option value="harsh">
+                                Harsh - Attack the weakest enemy first
+                            </option>
+                            <option value="rage">
+                                Rage - Attack the easiest enemy first
+                            </option>
+                            <option value="wise">
+                                Wise - Attack the most dangerous enemy first
+                            </option>
+                        </select>
+                    </label>
+                </section>
 
-  <!-- The channel -->
-  <section class="panel feed-panel">
-    <h2>The Realm <span class="hint" id="feed-status"></span></h2>
-    <ol class="feed" id="feed" aria-live="polite"></ol>
-  </section>
+                <!-- Bulletin board -->
+                <section class="panel">
+                    <h2>
+                        Bulletin Board
+                        <span class="hint" id="board-count"></span>
+                    </h2>
+                    <ul class="quests" id="board"></ul>
+                </section>
 
-  <div class="sidebar">
+                <!-- Store -->
+                <section class="panel">
+                    <h2>Absalom's Store</h2>
+                    <ul class="stock" id="store"></ul>
+                </section>
 
-    <!-- Character sheet -->
-    <section class="panel" id="sheet-panel">
-      <h2>Your adventurer</h2>
-      <div id="sheet-absent" class="empty" hidden>
-        You have no character in the Realm. Accept a quest to begin again.
-      </div>
-      <dl class="sheet" id="sheet"></dl>
-      <div class="rest" id="rest" hidden>
-        Resting <span id="rest-clock">—</span>
-      </div>
-      <label class="strategy">
-        Strategy
-        <select id="strategy">
-          <option value="random">random a target at whim</option>
-          <option value="harsh">harsh the weakest first</option>
-          <option value="rage">rage the easiest first</option>
-          <option value="wise">wise the most dangerous first</option>
-        </select>
-      </label>
-    </section>
+                <!-- Standings -->
+                <section class="panel">
+                    <h2>Best Adventurers</h2>
+                    <ol class="scores" id="scores"></ol>
+                </section>
+            </div>
+        </main>
 
-    <!-- Bulletin board -->
-    <section class="panel">
-      <h2>Bulletin Board <span class="hint" id="board-count"></span></h2>
-      <ul class="quests" id="board"></ul>
-    </section>
+        <!-- Joining: the one chance to save a fresh token ------------------------ -->
+        <dialog id="welcome-dialog">
+            <h2>Welcome to the Realm</h2>
+            <p>
+                This token is your key back into the Realm as
+                <strong id="welcome-nick"></strong>. This browser will remember
+                it, but if it ever forgets (a cleared history, a private window,
+                another device), nobody can reissue it. Copy it somewhere safe
+                now.
+            </p>
+            <label>
+                Your token
+                <input id="welcome-token" readonly spellcheck="false" />
+            </label>
+            <div class="dialog-actions">
+                <button type="button" id="welcome-copy">Copy token</button>
+                <button type="button" id="welcome-continue">Continue</button>
+            </div>
+        </dialog>
 
-    <!-- Store -->
-    <section class="panel">
-      <h2>Absalom's Store</h2>
-      <ul class="stock" id="store"></ul>
-    </section>
+        <!-- Help ---------------------------------------------------------------- -->
+        <dialog id="help-dialog" class="help">
+            <div class="help-body">
+                <h2>How to play</h2>
+                <p>
+                    Welcome to the Realm where life is simple. Accept quests, survive,
+                    grow strong, and one day face something big enough to
+                    ascend. Everything that happens in the realm is told in the
+                    feed.
+                </p>
+                <ol class="help-steps">
+                    <li>
+                        This is an idle game of patience, some times you make a lot of
+                        progress, some times you are stuck. The Realm changes constantly
+                        and events which favour you will eventually occur.
+                    </li>
+                    <li>
+                        Pick a quest from the Bulletin Board that suits your
+                        level based its CR (challenge rating).
+                    </li>
+                    <li>
+                        The fight resolves at once, a victory pays experience and coin
+                        while a defeat costs nothing.
+                    </li>
+                    <li>
+                        After every first you rest and cannot quest again
+                        until it ends.
+                    </li>
+                    <li>
+                        Spend your coin at Absalom's on a better weapon and
+                        armour.
+                    </li>
+                    <li>
+                        Watch the feed, the Realm changes constantly and fortune/misfortune
+                        may occur to anyone in the realm.
+                    </li>
+                    <li>
+                        When you can clear a quest whose CR is greater than ascension bar
+                        you win and leave the realm with glory with your name remembered forever.
+                    </li>
+                </ol>
 
-    <!-- Standings -->
-    <section class="panel">
-      <h2>Best Adventurers</h2>
-      <ol class="scores" id="scores"></ol>
-    </section>
+                <h2>Glossary</h2>
+                <dl class="glossary">
+                    <dt>The Realm</dt>
+                    <dd>
+                        The Realm is the home of heros filled with adventures
+                        for those who have the courage and patience to survive
+                        in it. Every few minutes quests are updated, random
+                        events occur, the store restocks, whether or not you are
+                        watching.
+                    </dd>
 
-  </div>
-</main>
+                    <dt>The feed</dt>
+                    <dd>
+                        The Realm's chronicle. Everything public lands here -
+                        postings (BOARD), happenings (EVENT), restocks (STORE),
+                        and the fights themselves (QUEST). Private news comes to
+                        you alone.
+                    </dd>
 
-<!-- Joining: the one chance to save a fresh token ------------------------ -->
-<dialog id="welcome-dialog">
-  <h2>Welcome to the Realm</h2>
-  <p>
-    This token is your key back into the Realm as
-    <strong id="welcome-nick"></strong>. This browser will remember it, but if
-    it ever forgets (a cleared history, a private window, another device),
-    nobody can reissue it. Copy it somewhere safe now.
-  </p>
-  <label>
-    Your token
-    <input id="welcome-token" readonly spellcheck="false">
-  </label>
-  <div class="dialog-actions">
-    <button type="button" id="welcome-copy">Copy token</button>
-    <button type="button" id="welcome-continue">Continue</button>
-  </div>
-</dialog>
+                    <dt>Bulletin Board (BB)</dt>
+                    <dd>
+                        The BB is where quests are posted and claimed. Accepting
+                        one starts the fight immediately and takes the posting
+                        off the board.
+                    </dd>
 
-<!-- Help ---------------------------------------------------------------- -->
-<dialog id="help-dialog" class="help">
-  <div class="help-body">
-    <h2>How to play</h2>
-    <p>
-      Life in the Realm is simple: accept quests, survive them, grow strong,
-      and one day face something big enough to ascend. Everything that happens
-      to you and to everyone else is told in the feed.
-    </p>
-    <ol class="help-steps">
-      <li>Pick a quest from the Bulletin Board that suits your level; the
-          colour of its CR is your guide.</li>
-      <li>The fight resolves at once, you alone against the whole warband.
-          Victory pays experience and coin; defeat costs nothing but pride and
-          a longer rest.</li>
-      <li>Rest. Every fight earns one, and you cannot quest again until it
-          ends.</li>
-      <li>Spend your coin at Absalom's on a better weapon and armour, and keep
-          swinging the same weapon until you master it.</li>
-      <li>Watch the feed: the Realm stirs on its own, and fortune (or a
-          cutpurse) may find you.</li>
-      <li>When you can survive a quest whose CR clears the ascension bar shown
-          in the header, you win the game.</li>
-    </ol>
+                    <dt>Quest</dt>
+                    <dd>
+                        A warband of monsters to face alone. Winning a quest
+                        earns experience and coin while losing a quest makes you
+                        walk away with nothing. Each posting shows what it pays
+                        and how it is likely to go for you.
+                    </dd>
 
-    <h2>Glossary</h2>
-    <dl class="glossary">
-      <dt>The Realm</dt>
-      <dd>The world of the game and everyone in it. It moves to a heartbeat of
-          a few minutes: quests are posted, events strike, the store restocks,
-          whether or not you are watching.</dd>
+                    <dt>Resting</dt>
+                    <dd>
+                        You always need to rest after a quest and cannot pickup a new quest
+                        while it lasrs. Resting time increases with level. A quest lost also
+                        adds a longer resting time.
+                    </dd>
 
-      <dt>The feed</dt>
-      <dd>The Realm's chronicle. Everything public lands here: postings
-          (BOARD), happenings (EVENT), restocks (STORE), and the fights
-          themselves (QUEST). Private news comes to you alone.</dd>
+                    <dt>CR (challenge rating)</dt>
+                    <dd>
+                        How dangerous a monster is. A quest's CR is the sum of
+                        its warband's. Green, amber and red follow your odds on
+                        the posting; before you have a character they fall back
+                        to comparing the CR against your level.
+                    </dd>
 
-      <dt>Bulletin Board</dt>
-      <dd>Where quests are posted and claimed. Each carries a four-character
-          number; accepting one starts the fight immediately and takes the
-          posting off the board.</dd>
+                    <dt>Reward</dt>
+                    <dd>
+                        What a posting pays on a win, in gold beside each quest.
+                        The same figure lands twice: once as experience, once as
+                        coin. Losing pays nothing at all.
+                    </dd>
 
-      <dt>Quest</dt>
-      <dd>A warband of monsters to face alone. Win and you earn experience and
-          the same amount of coin; lose and you walk away with nothing but a
-          longer rest.</dd>
+                    <dt>Odds</dt>
+                    <dd>
+                        How the fight is likely to go for you: safe, favourable,
+                        even, risky or grim. The Realm works it out by fighting
+                        the warband many times over with your level, your gear
+                        and the strategy you last fought with, then counting the
+                        wins. It is a sample, so treat it as a weather forecast
+                        rather than a promise, and it moves as you do.
+                    </dd>
 
-      <dt>CR (challenge rating)</dt>
-      <dd>How dangerous a monster is; a quest's CR is the whole warband's added
-          together. Green means at or below your level, amber up to double it,
-          red deadlier still.</dd>
+                    <dt>Ascension</dt>
+                    <dd>
+                        A posting marked <em>ascension</em> is at or above the
+                        Realm's ascension rating. Winning it completes the game:
+                        your character leaves the Realm for good, and you may
+                        reincarnate and start again.
+                    </dd>
 
-      <dt>Strategy</dt>
-      <dd>Whom you strike first when facing many: <em>random</em> takes targets
-          at whim, <em>harsh</em> cuts down the weakest first, <em>rage</em>
-          the least dangerous, <em>wise</em> the most dangerous.</dd>
+                    <dt>Attack Strategy</dt>
+                    <dd>
+                        Whom you strike first when facing multiple enemies:
+                        <em>Random</em> - Attack a random enemy at whim
+                        <em>Harsh</em> - Attack the weakest enemy first
+                        <em>Rage</em> - Attack the easiest enemy first
+                        <em>Wise</em> - Attack the most dangerous enemy first
+                    </dd>
 
-      <dt>Resting</dt>
-      <dd>Every fight earns one, win or lose, and you cannot quest while it
-          lasts. Higher levels rest longer; defeat adds time, and a hard-won
-          victory shaves some off.</dd>
+                    <dt>Level &amp; XP</dt>
+                    <dd>
+                        Experience follows the D&amp;D fifth-edition table, up
+                        to level 20. Each level adds hit points, strength and
+                        dexterity.
+                    </dd>
 
-      <dt>Level &amp; XP</dt>
-      <dd>Experience follows the D&amp;D fifth-edition table, up to level 20.
-          Each level adds hit points, strength and dexterity.</dd>
+                    <dt>Coin</dt>
+                    <dd>
+                        Won alongside experience, one for one, and occasionally
+                        found or stolen from you by events. Spent at the store.
+                    </dd>
 
-      <dt>Coin</dt>
-      <dd>Won alongside experience, one for one, and occasionally found or
-          stolen from you by events. Spent at the store.</dd>
+                    <dt>Absalom's Store</dt>
+                    <dd>
+                        Weapons and armour in limited stock, replenished over
+                        time. Buying a weapon replaces what you carry.
+                    </dd>
 
-      <dt>Absalom's Store</dt>
-      <dd>Weapons and armour in limited stock, replenished over time. Buying
-          replaces what you carry, and nothing is refunded.</dd>
+                    <dt>Proficiency</dt>
+                    <dd>
+                        Fighting battles with a weapon increases it's proficiency.
+                        Mastering a weapon adds a proficiency bonus on hits.
+                    </dd>
 
-      <dt>Proficiency</dt>
-      <dd>Fight enough battles with one weapon and you master it: a lasting
-          bonus to hit while you wield it. Costly, heavy weapons take longer to
-          learn, and a new weapon starts the count over.</dd>
+                    <dt>AC (armour class)</dt>
+                    <dd>
+                        How hard you are to hit. Armour improves AC, lighter
+                        armour also add dexterity.
+                    </dd>
 
-      <dt>AC (armour class)</dt>
-      <dd>How hard you are to hit. Armour sets it, and lighter pieces add some
-          of your dexterity on top.</dd>
+                    <dt>Events</dt>
+                    <dd>
+                        Periodically there are random event across the realm. Heros
+                        automatically participate in these even if you are offline.
+                    </dd>
 
-      <dt>Events</dt>
-      <dd>The Realm acting on its own: purses found, potions drunk (blessed or
-          cursed), pockets picked, dragons sighted, whole parties pressed into
-          epic quests.</dd>
+                    <dt>Ascension</dt>
+                    <dd>
+                        An adventurer who rises clears the highest challenge in
+                        the ascends and leaves the Realm with permanent glory.
+                        Their name is remembered forever in the realm.
+                    </dd>
 
-      <dt>Ascension</dt>
-      <dd>Complete a single quest whose CR clears the bar in the header and you
-          win: your adventurer leaves the Realm in glory. Your name stays
-          yours: accept another quest to begin again, fresh at level one.</dd>
+                    <dt>The purge</dt>
+                    <dd>
+                        Adventurer who are inactive for more than a week without
+                        picking up a quest are forgotten forever in the Realm.
+                    </dd>
+                </dl>
+            </div>
+            <div class="dialog-actions">
+                <button type="button" id="help-close">Close</button>
+            </div>
+        </dialog>
 
-      <dt>The purge</dt>
-      <dd>Go about a week without questing and your adventurer quietly leaves
-          the Realm. Your name and token remain yours; accept a quest to begin
-          anew.</dd>
+        <div class="toast" id="toast" hidden></div>
 
-      <dt>Token</dt>
-      <dd>Your key to the Realm, shown once when you join and known to nobody
-          else. It cannot be reissued and signing out forgets it, so copy it
-          when it is offered and keep it safe.</dd>
-    </dl>
-  </div>
-  <div class="dialog-actions">
-    <button type="button" id="help-close">Close</button>
-  </div>
-</dialog>
-
-<div class="toast" id="toast" hidden></div>
-
-<script src="app.js"></script>
-</body>
+        <script src="app.js"></script>
+    </body>
 </html>

@@ -231,6 +231,17 @@ async fn state_lists_the_board_the_store_and_the_standings() {
         m["name"].is_string() && m["count"].is_number() && m["cr"].is_string()
     }));
 
+    // Every posting says what it pays, so the board can be read for value and
+    // not only for danger. Zero is a legitimate answer and not a rounding
+    // accident: a warband of CR-0 creatures that cannot fight back is worth
+    // literally nothing, and the opening board always has a few.
+    let quests = body["quests"].as_array().unwrap();
+    assert!(
+        quests.iter().all(|q| q["reward"].as_i64().is_some_and(|reward| reward >= 0)),
+        "{}", body["quests"]
+    );
+    assert!(quests.iter().any(|q| q["reward"].as_i64().unwrap() > 0));
+
     // Store entries carry what a shopper needs.
     let item = &body["shop"][0];
     assert!(item["cost"].is_number());
@@ -362,6 +373,72 @@ async fn me_reports_a_full_character_sheet() {
     assert_eq!(body["strategy"], "random");
     assert!(body["weapon"].is_null(), "a newcomer carries nothing");
     assert!(body["summary"].as_str().unwrap().starts_with("Your stats: level 1"));
+}
+
+#[tokio::test]
+async fn the_board_advertises_the_purse_a_win_actually_pays() {
+    let h = harness!();
+    let token = h.join("Absalom").await;
+    let (_, state) = h.get("/api/state").await;
+
+    // The gentlest posting: the board is listed easiest first.
+    let quest = &state["quests"][0];
+    let reward = quest["reward"].as_i64().unwrap();
+    let id = quest["id"].as_str().unwrap().to_string();
+
+    let (_, turn) = h.post_auth("/api/quest", &token, json!({ "quest": id })).await;
+    // An event firing mid-test could pay out on its own and make the
+    // comparison below meaningless, so pin that down rather than hope.
+    assert_eq!(turn["ticks_replayed"], 0, "a tick fired during the fight");
+
+    let narration: String = turn["feed"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|l| l["text"].as_str())
+        .collect::<Vec<_>>()
+        .join(" ");
+
+    let (_, me) = h.get_auth("/api/me", &token).await;
+    if narration.contains("has won!") {
+        assert_eq!(me["xp"], reward, "the board promised {reward}");
+        assert_eq!(me["money"], reward, "the purse is paid twice over");
+    } else {
+        assert_eq!(me["xp"], 0, "a defeat pays nothing");
+        assert_eq!(me["money"], 0);
+    }
+}
+
+#[tokio::test]
+async fn the_sheet_judges_every_posting_on_the_board() {
+    let h = harness!();
+    let token = h.join("Absalom").await;
+    let (_, state) = h.get("/api/state").await;
+    let (status, me) = h.get_auth("/api/me", &token).await;
+    assert_eq!(status, StatusCode::OK, "{me}");
+
+    let outlook = me["outlook"].as_object().unwrap();
+    assert!(me["outlook_trials"].as_u64().unwrap() > 0);
+    for quest in state["quests"].as_array().unwrap() {
+        let id = quest["id"].as_str().unwrap();
+        let chance = outlook[id].as_f64().unwrap_or_else(|| panic!("{id} went unjudged"));
+        assert!((0.0..=1.0).contains(&chance), "{id} came out at {chance}");
+    }
+    assert_eq!(outlook.len(), state["quests"].as_array().unwrap().len());
+}
+
+#[tokio::test]
+async fn a_player_who_has_left_the_realm_is_judged_on_nothing() {
+    let h = harness!(Some("hunter2"), None);
+    let token = h.join("Absalom").await;
+    // A restart empties the Realm; the token still resolves, the character is
+    // simply gone, which is also what a purge or an ascension leaves behind.
+    h.post_auth("/api/admin", "hunter2", json!({ "admin": "restart", "seed": 7 })).await;
+
+    let (status, me) = h.get_auth("/api/me", &token).await;
+    assert_eq!(status, StatusCode::OK, "{me}");
+    assert_eq!(me["in_realm"], false);
+    assert!(me["outlook"].is_null(), "there is no character to judge");
 }
 
 #[tokio::test]

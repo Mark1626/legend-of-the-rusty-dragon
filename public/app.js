@@ -49,6 +49,11 @@ const state = {
   serverSkewMs: 0,
   seenQuests: new Set(),
   busy: false,
+  // The board is redrawn by two different polls: `/api/state` brings the
+  // postings, `/api/me` brings this character's odds on them. Whichever
+  // arrives second has to be able to redraw with what the first left here.
+  quests: [],
+  ascensionCr: Infinity,
 };
 
 // ---------------------------------------------------------------- requests
@@ -113,6 +118,13 @@ function lineNode(line) {
   if (!body.childNodes.length) body.textContent = line.text ?? '';
   li.append(body);
 
+  // Stamp what the filter needs so a node can be re-judged later without
+  // keeping the source line around. Nicks are `[A-Za-z0-9_-]`, so a space
+  // join is unambiguous.
+  li.dataset.kind = line.kind;
+  li.dataset.actors = (line.actors ?? []).join(' ');
+  li.hidden = filteredOut(li);
+
   return li;
 }
 
@@ -129,11 +141,48 @@ function appendFeed(lines) {
     feed.append(node);
   }
   while (feed.childElementCount > 400) feed.firstElementChild.remove();
+  updateFilterNote();
   if (atBottom) feed.scrollTop = feed.scrollHeight;
 }
 
-function renderBoard(quests) {
+// ------------------------------------------------------------------ filter
+
+// Purely a view: lines are hidden, never dropped, so relaxing the filter
+// brings history straight back without refetching anything.
+const filter = {
+  hiddenKinds: new Set(),
+  player: '',
+  get active() { return this.hiddenKinds.size > 0 || this.player !== ''; },
+};
+
+function filteredOut(li) {
+  if (filter.hiddenKinds.has(li.dataset.kind)) return true;
+  if (!filter.player) return false;
+  // Nicks are ASCII by the server's validator, so lowercasing is exact.
+  return !(li.dataset.actors ?? '')
+    .toLowerCase()
+    .split(' ')
+    .some((actor) => actor.includes(filter.player));
+}
+
+function applyFilter() {
+  const feed = $('feed');
+  for (const li of feed.children) li.hidden = filteredOut(li);
+  $('filter-clear').hidden = !filter.active;
+  updateFilterNote();
+  // The visible tail just changed; land the reader on the latest of it.
+  feed.scrollTop = feed.scrollHeight;
+}
+
+function updateFilterNote() {
+  const feed = $('feed');
+  const anyVisible = [...feed.children].some((li) => !li.hidden);
+  $('filter-empty').hidden = !filter.active || anyVisible || !feed.childElementCount;
+}
+
+function renderBoard() {
   const board = $('board');
+  const quests = state.quests;
   board.replaceChildren();
   $('board-count').textContent = `${quests.length} posted`;
 
@@ -144,13 +193,14 @@ function renderBoard(quests) {
 
   for (const quest of quests) {
     const li = document.createElement('li');
+    const chance = outlookOf(quest.id);
 
     const id = document.createElement('span');
     id.className = 'qid';
     id.textContent = quest.id;
 
     const cr = document.createElement('span');
-    cr.className = `qcr ${difficultyClass(quest.total_cr)}`;
+    cr.className = `qcr ${difficultyClass(quest.total_cr, chance)}`;
     cr.textContent = `CR ${quest.total_cr}`;
 
     const body = document.createElement('span');
@@ -158,7 +208,7 @@ function renderBoard(quests) {
     const name = document.createElement('span');
     name.className = 'qname';
     name.textContent = quest.display;
-    body.append(name);
+    body.append(name, questMeta(quest, chance));
 
     const go = document.createElement('button');
     go.className = 'act';
@@ -172,8 +222,70 @@ function renderBoard(quests) {
   }
 }
 
-/** A rough cue for whether a quest is worth trying, given the player's level. */
-function difficultyClass(totalCr) {
+/** What a posting pays, how it is likely to go, and whether it ends the game. */
+function questMeta(quest, chance) {
+  const meta = document.createElement('span');
+  meta.className = 'qmeta';
+
+  const purse = quest.reward.toLocaleString();
+  const reward = document.createElement('span');
+  reward.className = 'qreward';
+  reward.textContent = `${purse} XP & coin`;
+  reward.title = `Winning pays ${purse} experience and ${purse} coin. Losing pays nothing.`;
+  meta.append(reward);
+
+  if (chance !== undefined) {
+    const band = outlookBand(chance);
+    const odds = document.createElement('span');
+    odds.className = `qodds ${band.className}`;
+    odds.textContent = `${band.label} (${Math.round(chance * 100)}%)`;
+    odds.title =
+      `Estimated by fighting this warband ${state.me.outlook_trials} times over, `
+      + 'with your current level and gear and the strategy you last fought with. '
+      + 'A sample, not a promise.';
+    meta.append(odds);
+  }
+
+  if (Number.parseFloat(quest.total_cr) >= state.ascensionCr) {
+    const ascends = document.createElement('span');
+    ascends.className = 'qascend';
+    ascends.textContent = 'ascension';
+    ascends.title =
+      'At or above the ascension rating: winning this completes the game and '
+      + 'your character leaves the Realm to start again.';
+    meta.append(ascends);
+  }
+
+  return meta;
+}
+
+/** This character's sampled chance on a posting, or undefined if unjudged. */
+function outlookOf(questId) {
+  return state.me?.in_realm ? state.me.outlook?.[questId] : undefined;
+}
+
+/** How a sampled chance reads out loud. */
+function outlookBand(chance) {
+  if (chance >= 0.85) return { label: 'safe', className: 'odds-safe' };
+  if (chance >= 0.6) return { label: 'favourable', className: 'odds-good' };
+  if (chance >= 0.4) return { label: 'even', className: 'odds-even' };
+  if (chance >= 0.15) return { label: 'risky', className: 'odds-risky' };
+  return { label: 'grim', className: 'odds-grim' };
+}
+
+/**
+ * Colour the challenge rating by what it means for the reader.
+ *
+ * The server's estimate is the honest answer, so it wins whenever there is one.
+ * The level comparison is the fallback for a visitor with no character and for
+ * a posting that went up since this character's sheet was last fetched.
+ */
+function difficultyClass(totalCr, chance) {
+  if (chance !== undefined) {
+    if (chance >= 0.6) return 'cr-easy';
+    if (chance >= 0.25) return 'cr-fair';
+    return 'cr-deadly';
+  }
   const cr = Number.parseFloat(totalCr);
   const level = state.me?.level ?? 1;
   if (!Number.isFinite(cr)) return '';
@@ -236,6 +348,11 @@ function describeItem(item) {
 function renderScores(scores) {
   const list = $('scores');
   list.replaceChildren();
+  $('player-names').replaceChildren(...scores.map((player) => {
+    const option = document.createElement('option');
+    option.value = player.nick;
+    return option;
+  }));
   if (!scores.length) {
     list.append(emptyNote('Nobody has arrived yet.'));
     return;
@@ -262,6 +379,20 @@ function renderScores(scores) {
   });
 }
 
+/** `1d6+2 (3-8)`: the weapon's die, the strength bonus, and one hit's range. */
+function damageDisplay(damage) {
+  const bonus = damage.bonus ?? 0;
+  const sign = bonus > 0 ? `+${bonus}` : bonus < 0 ? String(bonus) : '';
+  return `${damage.display}${sign} (${damage.min + bonus}-${damage.max + bonus})`;
+}
+
+/** Either the earned bonus to hit, or how many fights stand before it. */
+function masteryDisplay(me) {
+  if (me.proficiency_bonus) return `+${me.proficiency_bonus} to hit`;
+  const mastery = me.mastery;
+  return mastery ? `${mastery.fights} of ${mastery.required} fights` : '—';
+}
+
 function renderSheet(me) {
   const sheet = $('sheet');
   sheet.replaceChildren();
@@ -279,10 +410,13 @@ function renderSheet(me) {
     ['Strength', me.strength],
     ['Dexterity', me.dexterity],
     ['Weapon', me.weapon ? me.weapon.name : '—'],
+  ];
+  if (me.weapon?.damage) rows.push(['Damage', damageDisplay(me.weapon.damage)]);
+  if (me.weapon) rows.push(['Mastery', masteryDisplay(me)]);
+  rows.push(
     ['Armour', me.armor ? me.armor.name : '—'],
     ['Record', `${me.quests_won}W / ${me.quests_lost}L`],
-  ];
-  if (me.proficiency_bonus) rows.splice(7, 0, ['Proficiency', `+${me.proficiency_bonus}`]);
+  );
 
   for (const [label, value] of rows) {
     const dt = document.createElement('dt');
@@ -352,8 +486,10 @@ async function acceptQuest(questId) {
     absorbTurn(turn);
     if (turn.ascension) toast(turn.ascension, false, 15_000);
     await pollFeed();          // our own narration, without waiting for the tick
-    await refreshMe();
+    // The board first: winning takes a posting off it and puts new ones up.
+    // The sheet last, because its odds have to describe the board just drawn.
     await refreshState();
+    await refreshMe();
   });
 }
 
@@ -362,8 +498,10 @@ async function buyItem(itemId) {
     const turn = await api('/api/buy', { method: 'POST', auth: true, body: { item: itemId } });
     absorbTurn(turn);
     await pollFeed();
-    await refreshMe();
+    // New gear moves the odds on every posting, so the sheet is refetched
+    // after the board rather than before it.
     await refreshState();
+    await refreshMe();
   });
 }
 
@@ -424,9 +562,21 @@ async function refreshState() {
     $('realm-uptime').textContent = snapshot.uptime_display;
     $('realm-ascension').textContent = snapshot.ascension_cr;
 
-    renderBoard(snapshot.quests);
+    state.quests = snapshot.quests;
+    state.ascensionCr = Number.parseFloat(snapshot.ascension_cr);
+    renderBoard();
     renderStore(snapshot.shop);
     renderScores(snapshot.scores);
+
+    // The board rotates on its own, and nothing in the feed names us when it
+    // does, so a rotation leaves the new postings unjudged until we ask again.
+    if (
+      !state.busy
+      && state.me?.in_realm
+      && state.quests.some((quest) => outlookOf(quest.id) === undefined)
+    ) {
+      refreshMe();
+    }
   } catch (error) {
     if (error.status === 0) $('feed-status').textContent = 'offline';
   }
@@ -438,6 +588,8 @@ async function refreshMe() {
     state.me = me;
     state.restUntil = me.in_realm ? serverNow() + me.resting_for * 1000 : 0;
     renderSheet(me);
+    // Levelling up, buying a weapon or changing strategy all move the odds.
+    renderBoard();
   } catch (error) {
     if (error.status === 401) handle(error);
   }
@@ -583,6 +735,30 @@ $('welcome-continue').addEventListener('click', () => $('welcome-dialog').close(
 $('welcome-dialog').addEventListener('close', () => { $('welcome-token').value = ''; });
 
 $('sign-out').addEventListener('click', signOut);
+
+for (const chip of document.querySelectorAll('#filter-kinds .chip')) {
+  chip.addEventListener('click', () => {
+    const kind = chip.dataset.kind;
+    if (!filter.hiddenKinds.delete(kind)) filter.hiddenKinds.add(kind);
+    chip.setAttribute('aria-pressed', String(!filter.hiddenKinds.has(kind)));
+    applyFilter();
+  });
+}
+
+$('filter-player').addEventListener('input', () => {
+  filter.player = $('filter-player').value.trim().toLowerCase();
+  applyFilter();
+});
+
+$('filter-clear').addEventListener('click', () => {
+  filter.hiddenKinds.clear();
+  filter.player = '';
+  $('filter-player').value = '';
+  for (const chip of document.querySelectorAll('#filter-kinds .chip')) {
+    chip.setAttribute('aria-pressed', 'true');
+  }
+  applyFilter();
+});
 
 $('help-open').addEventListener('click', () => $('help-dialog').showModal());
 $('help-close').addEventListener('click', () => $('help-dialog').close());

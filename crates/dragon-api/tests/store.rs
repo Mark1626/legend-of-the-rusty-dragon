@@ -19,14 +19,16 @@ use dragon_api::auth;
 use dragon_core::config::Pacing;
 use dragon_core::quest::QuestId;
 use dragon_core::step::{AdminCommand, Input};
-use sqlx::postgres::PgPoolOptions;
 use sqlx::AssertSqlSafe;
 use sqlx::PgPool;
+use sqlx::postgres::PgPoolOptions;
 
 static COUNTER: AtomicU32 = AtomicU32::new(0);
 
 fn database_url() -> Option<String> {
-    std::env::var("TEST_DATABASE_URL").ok().filter(|v| !v.trim().is_empty())
+    std::env::var("TEST_DATABASE_URL")
+        .ok()
+        .filter(|v| !v.trim().is_empty())
 }
 
 /// A pool bound to a fresh, empty schema.
@@ -58,10 +60,12 @@ async fn fresh_pool() -> Option<(PgPool, String)> {
 
     // Audited: `schema` is built from the process id and a counter, never from
     // anything a caller supplies. An identifier cannot be a bind parameter.
-    sqlx::query(AssertSqlSafe(format!("create schema if not exists {schema}")))
-        .execute(&pool)
-        .await
-        .expect("could not create the test schema");
+    sqlx::query(AssertSqlSafe(format!(
+        "create schema if not exists {schema}"
+    )))
+    .execute(&pool)
+    .await
+    .expect("could not create the test schema");
     Some((pool, schema))
 }
 
@@ -93,22 +97,31 @@ async fn migration_is_idempotent() {
     let (store, _pool) = store!();
     // Cold starts run it every time.
     for _ in 0..3 {
-        store.migrate().await.expect("re-running the migration failed");
+        store
+            .migrate()
+            .await
+            .expect("re-running the migration failed");
     }
 }
 
 #[tokio::test]
 async fn the_first_request_opens_the_realm() {
     let (store, _pool) = store!();
-    assert!(store.snapshot().await.unwrap().is_none(), "nothing exists yet");
+    assert!(
+        store.snapshot().await.unwrap().is_none(),
+        "nothing exists yet"
+    );
 
     let committed = store.commit_turn(Input::CatchUp).await.unwrap();
     assert_eq!(committed.state.bboard.len(), 16);
     assert_eq!(committed.state.shop.total_items(), 12);
-    assert!(committed.now > 1_700_000_000, "the clock came from the database");
+    assert!(
+        committed.now > 1_700_000_000,
+        "the clock came from the database"
+    );
 
     let said = committed.turn.out.transcript().join(" ");
-    assert!(said.contains("The Legend of the Pink Dragon"), "{said}");
+    assert!(said.contains("The Legend of the Rusty Dragon"), "{said}");
 
     // And the opening announcements reached the feed.
     let history = store.feed(0, 100, None).await.unwrap();
@@ -134,7 +147,11 @@ async fn state_survives_a_round_trip_through_the_database() {
 async fn a_player_can_join_quest_and_buy() {
     let (store, pool) = store!();
 
-    let (joined, token) = store.commit_join("Absalom").await.unwrap().expect("name is free");
+    let (joined, token) = store
+        .commit_join("Absalom")
+        .await
+        .unwrap()
+        .expect("name is free");
     assert_eq!(auth::authenticate(&pool, &token).await.unwrap(), "Absalom");
     assert!(joined.state.users.contains_key("Absalom"));
 
@@ -147,7 +164,10 @@ async fn a_player_can_join_quest_and_buy() {
     drop(state);
 
     let bought = store
-        .commit_turn(Input::Buy { nick: "Absalom".into(), item })
+        .commit_turn(Input::Buy {
+            nick: "Absalom".into(),
+            item,
+        })
         .await
         .unwrap();
     // With no money the purchase is refused, privately, and nothing is lost.
@@ -157,19 +177,34 @@ async fn a_player_can_join_quest_and_buy() {
     }));
 
     let quested = store
-        .commit_turn(Input::Quest { nick: "Absalom".into(), quest, strategy: Some("wise".into()) })
+        .commit_turn(Input::Quest {
+            nick: "Absalom".into(),
+            quest,
+            strategy: Some("wise".into()),
+        })
         .await
         .unwrap();
     let user = &quested.state.users["Absalom"];
     assert_eq!(user.strategy, dragon_core::PlayerStrategy::Wise);
-    assert_eq!(user.quest_win + user.quest_lost, 1, "the fight was resolved");
+    assert_eq!(
+        user.quest_win + user.quest_lost,
+        1,
+        "the fight was resolved"
+    );
 }
 
 #[tokio::test]
 async fn a_name_can_only_be_claimed_once() {
     let (store, pool) = store!();
-    let (_, first) = store.commit_join("Absalom").await.unwrap().expect("name is free");
-    assert!(store.commit_join("Absalom").await.unwrap().is_none(), "the name is taken");
+    let (_, first) = store
+        .commit_join("Absalom")
+        .await
+        .unwrap()
+        .expect("name is free");
+    assert!(
+        store.commit_join("Absalom").await.unwrap().is_none(),
+        "the name is taken"
+    );
     // The original token still works.
     assert_eq!(auth::authenticate(&pool, &first).await.unwrap(), "Absalom");
 }
@@ -188,9 +223,17 @@ async fn an_unknown_token_is_rejected() {
 #[tokio::test]
 async fn the_feed_is_ordered_and_pages_by_cursor() {
     let (store, _pool) = store!();
-    store.commit_turn(Input::Join { nick: "Absalom".into() }).await.unwrap();
+    store
+        .commit_turn(Input::Join {
+            nick: "Absalom".into(),
+        })
+        .await
+        .unwrap();
     for _ in 0..6 {
-        store.commit_turn(Input::Admin(AdminCommand::AddQuest { level: Some(2) })).await.unwrap();
+        store
+            .commit_turn(Input::Admin(AdminCommand::AddQuest { level: Some(2) }))
+            .await
+            .unwrap();
     }
 
     let all = store.feed(0, 500, None).await.unwrap();
@@ -201,18 +244,32 @@ async fn the_feed_is_ordered_and_pages_by_cursor() {
     // Paging picks up exactly where it left off, with no gap and no repeat.
     let first = store.feed(0, 3, None).await.unwrap();
     assert_eq!(first.len(), 3);
-    let rest = store.feed(first.last().unwrap().id, 500, None).await.unwrap();
-    let stitched: Vec<i64> =
-        first.iter().chain(rest.iter()).map(|entry| entry.id).collect();
+    let rest = store
+        .feed(first.last().unwrap().id, 500, None)
+        .await
+        .unwrap();
+    let stitched: Vec<i64> = first
+        .iter()
+        .chain(rest.iter())
+        .map(|entry| entry.id)
+        .collect();
     assert_eq!(stitched, all.iter().map(|e| e.id).collect::<Vec<_>>());
 }
 
 #[tokio::test]
 async fn the_feed_tail_is_the_newest_lines_in_reading_order() {
     let (store, _pool) = store!();
-    store.commit_turn(Input::Join { nick: "Absalom".into() }).await.unwrap();
+    store
+        .commit_turn(Input::Join {
+            nick: "Absalom".into(),
+        })
+        .await
+        .unwrap();
     for _ in 0..6 {
-        store.commit_turn(Input::Admin(AdminCommand::AddQuest { level: Some(2) })).await.unwrap();
+        store
+            .commit_turn(Input::Admin(AdminCommand::AddQuest { level: Some(2) }))
+            .await
+            .unwrap();
     }
 
     let all = store.feed(0, 500, None).await.unwrap();
@@ -222,7 +279,10 @@ async fn the_feed_tail_is_the_newest_lines_in_reading_order() {
     let tail = store.feed_tail(3, None).await.unwrap();
     assert_eq!(
         tail.iter().map(|e| e.id).collect::<Vec<_>>(),
-        all[all.len() - 3..].iter().map(|e| e.id).collect::<Vec<_>>()
+        all[all.len() - 3..]
+            .iter()
+            .map(|e| e.id)
+            .collect::<Vec<_>>()
     );
 
     // Asking for more than exists returns everything, not an error.
@@ -233,23 +293,38 @@ async fn the_feed_tail_is_the_newest_lines_in_reading_order() {
     // few lines are found even under a flood of other news.
     let mine = store.feed_tail(500, Some("Absalom")).await.unwrap();
     assert!(!mine.is_empty());
-    assert!(mine.iter().all(|entry| entry.line.actors.iter().any(|a| a == "Absalom")));
+    assert!(
+        mine.iter()
+            .all(|entry| entry.line.actors.iter().any(|a| a == "Absalom"))
+    );
 }
 
 #[tokio::test]
 async fn the_feed_can_be_narrowed_to_one_player() {
     let (store, _pool) = store!();
-    store.commit_turn(Input::Join { nick: "Absalom".into() }).await.unwrap();
-    store.commit_turn(Input::Join { nick: "Barnabas".into() }).await.unwrap();
+    store
+        .commit_turn(Input::Join {
+            nick: "Absalom".into(),
+        })
+        .await
+        .unwrap();
+    store
+        .commit_turn(Input::Join {
+            nick: "Barnabas".into(),
+        })
+        .await
+        .unwrap();
 
     let mine = store.feed(0, 500, Some("Absalom")).await.unwrap();
     assert!(!mine.is_empty());
     assert!(
-        mine.iter().all(|entry| entry.line.actors.iter().any(|a| a == "Absalom")),
+        mine.iter()
+            .all(|entry| entry.line.actors.iter().any(|a| a == "Absalom")),
         "the filter returned lines that do not name the player"
     );
     assert!(
-        mine.iter().all(|entry| !entry.line.plain().contains("Barnabas")),
+        mine.iter()
+            .all(|entry| !entry.line.plain().contains("Barnabas")),
         "the filter leaked another player's news"
     );
 }
@@ -257,7 +332,12 @@ async fn the_feed_can_be_narrowed_to_one_player() {
 #[tokio::test]
 async fn line_styling_and_timestamps_survive_storage() {
     let (store, _pool) = store!();
-    store.commit_turn(Input::Join { nick: "Absalom".into() }).await.unwrap();
+    store
+        .commit_turn(Input::Join {
+            nick: "Absalom".into(),
+        })
+        .await
+        .unwrap();
 
     let entry = store
         .feed(0, 500, Some("Absalom"))
@@ -271,7 +351,11 @@ async fn line_styling_and_timestamps_survive_storage() {
     assert_eq!(entry.line.actors, vec!["Absalom"]);
     assert!(entry.line.at.is_some(), "the stored line kept its time");
     assert!(
-        entry.line.spans.iter().any(|span| span.bold && span.text == "Absalom"),
+        entry
+            .line
+            .spans
+            .iter()
+            .any(|span| span.bold && span.text == "Absalom"),
         "bold styling was lost in storage"
     );
 }
@@ -323,7 +407,11 @@ async fn concurrent_turns_produce_a_gapless_feed() {
     let mut unique = reported.clone();
     unique.sort_unstable();
     unique.dedup();
-    assert_eq!(reported.len(), unique.len(), "two turns claimed the same cursor");
+    assert_eq!(
+        reported.len(),
+        unique.len(),
+        "two turns claimed the same cursor"
+    );
 
     let history = store.feed(0, 500, None).await.unwrap();
     assert!(history.windows(2).all(|w| w[0].id < w[1].id));
@@ -350,8 +438,13 @@ async fn the_clock_catches_up_across_separate_requests() {
     assert!(later.turn.ticks_replayed >= 2);
 
     // The replayed lines are dated across the gap, not stamped all at once.
-    let stamps: Vec<i64> =
-        later.turn.out.feed.iter().filter_map(|line| line.at).collect();
+    let stamps: Vec<i64> = later
+        .turn
+        .out
+        .feed
+        .iter()
+        .filter_map(|line| line.at)
+        .collect();
     if stamps.len() > 1 {
         assert!(stamps.windows(2).all(|w| w[0] <= w[1]), "{stamps:?}");
     }
@@ -375,13 +468,21 @@ async fn pacing_from_configuration_overrides_what_was_stored() {
     let web = Store::from_pool(pool, Pacing::WEB, Some(1));
     let (state, _) = web.snapshot().await.unwrap().unwrap();
     assert_eq!(state.pacing.tick_secs, Pacing::WEB.tick_secs);
-    assert_eq!(state.started_at, opened.state.started_at, "same Realm, new pacing");
+    assert_eq!(
+        state.started_at, opened.state.started_at,
+        "same Realm, new pacing"
+    );
 }
 
 #[tokio::test]
 async fn an_admin_restart_replaces_the_realm_in_place() {
     let (store, _pool) = store!();
-    store.commit_turn(Input::Join { nick: "Absalom".into() }).await.unwrap();
+    store
+        .commit_turn(Input::Join {
+            nick: "Absalom".into(),
+        })
+        .await
+        .unwrap();
     let before = store.snapshot().await.unwrap().unwrap().0;
     assert_eq!(before.users.len(), 1);
 
@@ -399,7 +500,12 @@ async fn an_admin_restart_replaces_the_realm_in_place() {
 #[tokio::test]
 async fn a_quest_that_does_not_exist_is_reported_without_side_effects() {
     let (store, _pool) = store!();
-    store.commit_turn(Input::Join { nick: "Absalom".into() }).await.unwrap();
+    store
+        .commit_turn(Input::Join {
+            nick: "Absalom".into(),
+        })
+        .await
+        .unwrap();
 
     let committed = store
         .commit_turn(Input::Quest {
@@ -411,7 +517,12 @@ async fn a_quest_that_does_not_exist_is_reported_without_side_effects() {
         .unwrap();
 
     assert!(
-        committed.turn.out.reply.iter().any(|l| l.plain().contains("unavailable")),
+        committed
+            .turn
+            .out
+            .reply
+            .iter()
+            .any(|l| l.plain().contains("unavailable")),
         "the player should be told"
     );
     let user = &committed.state.users["Absalom"];
@@ -421,10 +532,22 @@ async fn a_quest_that_does_not_exist_is_reported_without_side_effects() {
 #[tokio::test]
 async fn the_cursor_tracks_the_newest_line() {
     let (store, _pool) = store!();
-    assert_eq!(store.cursor().await.unwrap(), 0, "an empty feed starts at zero");
+    assert_eq!(
+        store.cursor().await.unwrap(),
+        0,
+        "an empty feed starts at zero"
+    );
 
-    let committed = store.commit_turn(Input::Join { nick: "Absalom".into() }).await.unwrap();
+    let committed = store
+        .commit_turn(Input::Join {
+            nick: "Absalom".into(),
+        })
+        .await
+        .unwrap();
     let cursor = store.cursor().await.unwrap();
     assert_eq!(Some(cursor), committed.cursor);
-    assert!(store.feed(cursor, 100, None).await.unwrap().is_empty(), "nothing after it");
+    assert!(
+        store.feed(cursor, 100, None).await.unwrap().is_empty(),
+        "nothing after it"
+    );
 }
